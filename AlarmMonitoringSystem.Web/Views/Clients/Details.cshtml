@@ -1,0 +1,367 @@
+﻿@model AlarmMonitoringSystem.Web.Models.ClientDetailsViewModel
+@{
+    ViewData["Title"] = $"Client Details - {Model.Client.Name}";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Clients" asp-action="Index">Clients</a></li>
+                    <li class="breadcrumb-item active">@Model.Client.Name</li>
+                </ol>
+            </nav>
+            <h1 class="h2">@Model.Client.Name</h1>
+            <p class="text-muted">Client ID: <code>@Model.Client.ClientId</code></p>
+        </div>
+    </div>
+
+    <!-- Client Info Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Client Information</h6>
+                    <span class="@Model.Client.StatusCssClass">
+                        <i class="fas fa-circle mr-1"></i>@Model.Client.StatusDisplay
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Name:</strong><br>
+                            @Model.Client.Name
+                        </div>
+                        <div class="col-md-3">
+                            <strong>IP Address:</strong><br>
+                            <span class="text-monospace">@Model.Client.IpAddress:@Model.Client.Port</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Last Connected:</strong><br>
+                            @if (Model.Client.LastConnectedAt.HasValue)
+                            {
+                                <span title="@Model.Client.LastConnectedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                    @Model.Client.LastConnectedAt.Value.ToString("MMM dd, yyyy HH:mm")
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Never</span>
+                            }
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Registered:</strong><br>
+                            @Model.Client.CreatedAt.ToString("MMM dd, yyyy")
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.Client.Description))
+                    {
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <strong>Description:</strong><br>
+                                @Model.Client.Description
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h4>@Model.TotalAlarms</h4>
+                    <small>Total Alarms</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h4>@Model.ActiveAlarms</h4>
+                    <small>Active Alarms</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h4>@Model.UnacknowledgedAlarms</h4>
+                    <small>Unacknowledged</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h4>@Model.CriticalAlarms</h4>
+                    <small>Critical Alarms</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Critical Alarms -->
+    @if (Model.RecentCriticalAlarms.Any())
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h6 class="m-0 font-weight-bold">Recent Critical Alarms</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Title</th>
+                                        <th>Message</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var alarm in Model.RecentCriticalAlarms)
+                                    {
+                                        <tr>
+                                            <td>@alarm.AlarmTime.ToString("MMM dd HH:mm")</td>
+                                            <td>
+                                                <a asp-controller="Alarms" asp-action="Details" asp-route-id="@alarm.Id">
+                                                    @alarm.Title
+                                                </a>
+                                            </td>
+                                            <td>@alarm.Message</td>
+                                            <td>
+                                                @if (alarm.IsAcknowledged)
+                                                {
+                                                    <span class="badge badge-secondary">Acknowledged</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge badge-warning">Pending</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Tabs for Alarms and Logs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="alarms-tab" data-toggle="tab" href="#alarms" role="tab">
+                                Alarms (@Model.Alarms.Count)
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="logs-tab" data-toggle="tab" href="#logs" role="tab">
+                                Connection Logs (@Model.ConnectionLogs.Count)
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content">
+                        <!-- Alarms Tab -->
+                        <div class="tab-pane fade show active" id="alarms" role="tabpanel">
+                            @if (Model.Alarms.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Time</th>
+                                                <th>Alarm ID</th>
+                                                <th>Title</th>
+                                                <th>Type</th>
+                                                <th>Severity</th>
+                                                <th>Value</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var alarm in Model.Alarms)
+                                            {
+                                                <tr class="@(alarm.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.Critical ? "table-danger" :
+                                                                                                                 alarm.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.High ? "table-warning" : "")">
+                                            <td>@alarm.AlarmTime.ToString("MMM dd HH:mm")</td>
+                                            <td><code>@alarm.AlarmId</code></td>
+                                            <td>
+                                                <strong>@alarm.Title</strong>
+                                                @if (!string.IsNullOrEmpty(alarm.Message))
+                                                        {
+                                                            <br>
+                                                
+                                                            <small class="text-muted">@alarm.Message</small>
+                                                        }
+                                                    </td>
+                                                    <td>@alarm.TypeDisplay</td>
+                                                    <td>
+                                                        <span class="badge @alarm.SeverityBadgeClass">@alarm.SeverityDisplay</span>
+                                                    </td>
+                                                    <td>
+                                                        @if (alarm.NumericValue.HasValue)
+                                                        {
+                                                            <span>@alarm.FormattedValue</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">-</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        @if (alarm.IsAcknowledged)
+                                                        {
+                                                            <span class="badge badge-secondary">
+                                                                <i class="fas fa-check"></i> Acknowledged
+                                                            </span>
+                                                            @if (!string.IsNullOrEmpty(alarm.AcknowledgedBy))
+                                                            {
+                                                                <br>
+                                                
+                                                                <small class="text-muted">by @alarm.AcknowledgedBy</small>
+                                                            }
+                                                        }
+                                                        else if (alarm.IsActive)
+                                                        {
+                                                            <span class="badge badge-warning">
+                                                                <i class="fas fa-exclamation-triangle"></i> Pending
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge badge-secondary">Inactive</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group" role="group">
+                                                            <a asp-controller="Alarms" asp-action="Details" asp-route-id="@alarm.Id"
+                                                               class="btn btn-info btn-sm">
+                                                                <i class="fas fa-eye"></i>
+                                                            </a>
+                                                            @if (!alarm.IsAcknowledged && alarm.IsActive)
+                                                            {
+                                                                <form asp-controller="Alarms" asp-action="Acknowledge" asp-route-id="@alarm.Id"
+                                                                      method="post" style="display: inline;">
+                                                                    <button type="submit" class="btn btn-success btn-sm"
+                                                                            onclick="return confirm('Acknowledge this alarm?')">
+                                                                        <i class="fas fa-check"></i>
+                                                                    </button>
+                                                                </form>
+                                                            }
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-bell fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No Alarms</h5>
+                                    <p class="text-muted">This client has not generated any alarms yet.</p>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Connection Logs Tab -->
+                        <div class="tab-pane fade" id="logs" role="tabpanel">
+                            @if (Model.ConnectionLogs.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Time</th>
+                                                <th>Status</th>
+                                                <th>Level</th>
+                                                <th>Message</th>
+                                                <th>IP Address</th>
+                                                <th>Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var log in Model.ConnectionLogs)
+                                            {
+                                                <tr>
+                                                    <td>@log.LogTime.ToString("MMM dd HH:mm:ss")</td>
+                                                    <td>
+                                                        <i class="@log.StatusIcon"></i>
+                                                        @log.StatusDisplay
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge @log.LogLevelBadgeClass">@log.LogLevelDisplay</span>
+                                                    </td>
+                                                    <td>@log.Message</td>
+                                                    <td>
+                                                        @if (!string.IsNullOrEmpty(log.IpAddress))
+                                                        {
+                                                            <span class="text-monospace">@log.IpAddress@(log.Port.HasValue ? $":{log.Port}" : "")</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">-</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        @if (!string.IsNullOrEmpty(log.Details))
+                                                        {
+                                                            <small>@log.Details</small>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">-</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No Connection Logs</h5>
+                                    <p class="text-muted">No connection activity has been recorded for this client.</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-refresh page every 30 seconds
+        setInterval(function() {
+            if (document.visibilityState === 'visible') {
+                window.location.reload();
+            }
+        }, 30000);
+    </script>
+}

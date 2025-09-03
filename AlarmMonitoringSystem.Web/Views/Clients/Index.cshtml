@@ -1,0 +1,246 @@
+﻿@model List<AlarmMonitoringSystem.Application.DTOs.ClientDto>
+@{
+    ViewData["Title"] = "Clients - Alarm Monitoring System";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h2">Clients</h1>
+                    <p class="text-muted">Manage connected alarm monitoring clients</p>
+                </div>
+                <div>
+                    <span class="badge badge-primary">Total: @Model.Count</span>
+                    <span class="badge badge-success">Connected: @Model.Count(c => c.Status == AlarmMonitoringSystem.Domain.Enums.ConnectionStatus.Connected)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row">
+                        <div class="col-md-3">
+                            <label for="status">Status Filter:</label>
+                            <select name="status" id="status" class="form-control">
+                                <option value="">All Status</option>
+                                <option value="Connected">Connected</option>
+                                <option value="Disconnected">Disconnected</option>
+                                <option value="Error">Error</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="search">Search:</label>
+                            <input type="text" name="search" id="search" class="form-control" placeholder="Client name or ID" value="@ViewBag.Search">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary mr-2">Filter</button>
+                            <a href="@Url.Action("Index")" class="btn btn-secondary">Clear</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clients Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Registered Clients</h6>
+                </div>
+                <div class="card-body">
+                    @if (Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Client ID</th>
+                                        <th>Name</th>
+                                        <th>Address</th>
+                                        <th>Last Connected</th>
+                                        <th>Active Alarms</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var client in Model)
+                                    {
+                                        <tr class="@(client.Status == AlarmMonitoringSystem.Domain.Enums.ConnectionStatus.Connected ? "table-success" : "")">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    @if (client.Status == AlarmMonitoringSystem.Domain.Enums.ConnectionStatus.Connected)
+                                                    {
+                                                        <i class="fas fa-circle text-success mr-2"></i>
+                                                        <span class="badge badge-success">Connected</span>
+                                                    }
+                                                    else if (client.Status == AlarmMonitoringSystem.Domain.Enums.ConnectionStatus.Disconnected)
+                                                    {
+                                                        <i class="fas fa-circle text-secondary mr-2"></i>
+                                                        <span class="badge badge-secondary">Disconnected</span>
+                                                    }
+                                                    else if (client.Status == AlarmMonitoringSystem.Domain.Enums.ConnectionStatus.Error)
+                                                    {
+                                                        <i class="fas fa-circle text-danger mr-2"></i>
+                                                        <span class="badge badge-danger">Error</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="fas fa-circle text-warning mr-2"></i>
+                                                        <span class="badge badge-warning">@client.StatusDisplay</span>
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <code>@client.ClientId</code>
+                                            </td>
+                                            <td>
+                                                <strong>@client.Name</strong>
+                                                @if (!string.IsNullOrEmpty(client.Description))
+                                                {
+                                                    <br>
+                                        
+                                                    <small class="text-muted">@client.Description</small>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="text-monospace">@client.IpAddress:@client.Port</span>
+                                            </td>
+                                            <td>
+                                                @if (client.LastConnectedAt.HasValue)
+                                                {
+                                                    <span title="@client.LastConnectedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                                        @{
+                                                            var timeDiff = DateTime.UtcNow - client.LastConnectedAt.Value;
+                                                            string timeAgo = timeDiff.TotalMinutes < 1 ? "Just now" :
+                                                            timeDiff.TotalMinutes < 60 ? $"{(int)timeDiff.TotalMinutes} min ago" :
+                                                            timeDiff.TotalHours < 24 ? $"{(int)timeDiff.TotalHours} hour(s) ago" :
+                                                            $"{(int)timeDiff.TotalDays} day(s) ago";
+                                                        }
+                                                        @timeAgo
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Never</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (client.ActiveAlarmCount > 0)
+                                                {
+                                                    <span class="badge badge-danger">@client.ActiveAlarmCount</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge badge-success">0</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a asp-action="Details" asp-route-id="@client.Id" class="btn btn-info btn-sm">
+                                                        <i class="fas fa-eye"></i> Details
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-desktop fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Clients Found</h5>
+                            <p class="text-muted">No alarm monitoring clients are currently registered.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    @if (Model.Any())
+    {
+        <div class="row mt-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h5>@Model.Count</h5>
+                        <small>Total Clients</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h5>@Model.Count(c => c.Status == AlarmMonitoringSystem.Domain.Enums.ConnectionStatus.Connected)</h5>
+                        <small>Connected</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h5>@Model.Sum(c => c.ActiveAlarmCount)</h5>
+                        <small>Active Alarms</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h5>@Model.Count(c => c.IsActive)</h5>
+                        <small>Active Clients</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-refresh page every 30 seconds if no filter is applied
+        @if (string.IsNullOrEmpty(ViewBag.Search))
+        {
+                <text>
+                setInterval(function() {
+                    if (document.visibilityState === 'visible') {
+                        window.location.reload();
+                    }
+                }, 30000);
+                </text>
+        }
+    </script>
+}

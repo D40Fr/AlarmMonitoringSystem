@@ -1,22 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿// AlarmMonitoringSystem.Application/Mappers/MappingExtensions.cs
 using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace AlarmMonitoringSystem.Application.Mappers
 {
     public static class MappingExtensions
     {
-        public static IServiceCollection AddAutoMapperProfiles(this IServiceCollection services)
-        {
-            // Register AutoMapper with all profiles from current assembly
-            services.AddAutoMapper(Assembly.GetExecutingAssembly());
-            return services;
-        }
+        // ✅ REMOVED: Deprecated AddAutoMapperProfiles method
+        // AutoMapper 15.x doesn't use this pattern anymore
 
         // Extension methods for common mapping scenarios
         public static TDestination MapTo<TDestination>(this object source, IMapper mapper)

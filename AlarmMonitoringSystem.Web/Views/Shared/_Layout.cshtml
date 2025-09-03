@@ -3,47 +3,273 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - AlarmMonitoringSystem.App</title>
+    <title>@ViewData["Title"] - Alarm Monitoring System</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/AlarmMonitoringSystem.App.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/AlarmMonitoringSystem.Web.styles.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">AlarmMonitoringSystem.App</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <i class="fas fa-shield-alt"></i> Alarm Monitoring System
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link" asp-controller="Home" asp-action="Index">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            <a class="nav-link" asp-controller="Clients" asp-action="Index">
+                                <i class="fas fa-desktop"></i> Clients
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Alarms" asp-action="Index">
+                                <i class="fas fa-bell"></i> Alarms
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-chart-bar"></i> Reports
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-fire"></i> Critical Alarms</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-clock"></i> Alarm History</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-wifi"></i> Connection Logs</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <span class="navbar-text">
+                                <i class="fas fa-circle text-success"></i> TCP Server: Port 6060
+                            </span>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user"></i> Admin
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-info-circle"></i> About</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                            </ul>
                         </li>
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+
+    <!-- Alert Notifications Bar -->
+    <div id="alert-bar" class="alert-bar d-none">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="alert-message">Critical alarms detected!</span>
+                </div>
+                <button type="button" class="btn-close" onclick="hideAlertBar()"></button>
+            </div>
+        </div>
     </div>
 
-    <footer class="border-top footer text-muted">
+    <main class="container-fluid mt-3">
+        @RenderBody()
+    </main>
+
+    <footer class="border-top footer text-muted mt-5 py-3">
         <div class="container">
-            &copy; 2025 - AlarmMonitoringSystem.App - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            <div class="row">
+                <div class="col-md-6">
+                    &copy; 2025 - Alarm Monitoring System - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                </div>
+                <div class="col-md-6 text-end">
+                    <small>
+                        <i class="fas fa-server"></i> System Status:
+                        <span class="text-success">Online</span> |
+                        <i class="fas fa-clock"></i> <span id="current-time"></span>
+                    </small>
+                </div>
+            </div>
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <!-- Global JavaScript -->
+    <script>
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Alert bar functionality
+        function showAlertBar(message, type = 'danger') {
+            const alertBar = document.getElementById('alert-bar');
+            alertBar.className = `alert-bar alert alert-${type} alert-dismissible mb-0`;
+            document.getElementById('alert-message').textContent = message;
+            alertBar.classList.remove('d-none');
+        }
+
+        function hideAlertBar() {
+            document.getElementById('alert-bar').classList.add('d-none');
+        }
+
+        // Active navigation highlighting
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname.toLowerCase();
+            const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+
+            navLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && currentPath.includes(href.toLowerCase().split('/')[1])) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Global error handling
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.error);
+        });
+
+        // Notification permission (for future use)
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
+
+    <!-- Custom Styles -->
+    <style>
+        /* Custom styles for the alarm monitoring system */
+        .navbar-brand {
+            font-weight: bold;
+        }
+
+        .alert-bar {
+            position: fixed;
+            top: 56px; /* Height of navbar */
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            border-radius: 0;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .navbar-text {
+            font-size: 0.875rem;
+        }
+
+        .nav-link.active {
+            font-weight: bold;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 0.25rem;
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+
+        /* Status indicators */
+        .status-online {
+            color: #28a745;
+        }
+
+        .status-offline {
+            color: #dc3545;
+        }
+
+        .status-warning {
+            color: #ffc107;
+        }
+
+        /* Custom badge styles */
+        .badge-info {
+            background-color: #17a2b8;
+        }
+
+        .badge-warning {
+            background-color: #ffc107;
+        }
+
+        .badge-danger {
+            background-color: #dc3545;
+        }
+
+        .badge-dark {
+            background-color: #343a40;
+        }
+
+        .badge-success {
+            background-color: #28a745;
+        }
+
+        /* Table enhancements */
+        .table-hover tbody tr:hover {
+            background-color: rgba(0,123,255,.075);
+        }
+
+        /* Card shadows */
+        .card.shadow {
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+
+        /* Responsive adjustments */
+        @@media (max-width: 768px) {
+            .container-fluid {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+
+            .btn-group .btn {
+                margin-bottom: 5px;
+            }
+        }
+
+        /* Animation for new alarms */
+        @@keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+            }
+        }
+
+        .critical-alarm {
+            animation: pulse 2s infinite;
+        }
+
+        /* Loading spinner */
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+    </style>
 </body>
 </html>

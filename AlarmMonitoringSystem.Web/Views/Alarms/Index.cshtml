@@ -1,0 +1,408 @@
+﻿@model List<AlarmMonitoringSystem.Application.DTOs.AlarmDto>
+@{
+    ViewData["Title"] = "Alarms - Alarm Monitoring System";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h2">Alarms</h1>
+                    <p class="text-muted">Monitor and manage system alarms</p>
+                </div>
+                <div>
+                    <span class="badge badge-primary">Total: @Model.Count</span>
+                    <span class="badge badge-warning">Unacknowledged: @Model.Count(a => !a.IsAcknowledged && a.IsActive)</span>
+                    <span class="badge badge-danger">Critical: @Model.Count(a => a.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.Critical && a.IsActive)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row">
+                        <div class="col-md-2">
+                            <label for="severity">Severity:</label>
+                            <select name="severity" id="severity" class="form-control">
+                                <option value="">All Severities</option>
+                                <option value="Critical" selected="@(ViewBag.Severity == "Critical")">Critical</option>
+                                <option value="High" selected="@(ViewBag.Severity == "High")">High</option>
+                                <option value="Medium" selected="@(ViewBag.Severity == "Medium")">Medium</option>
+                                <option value="Low" selected="@(ViewBag.Severity == "Low")">Low</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="type">Type:</label>
+                            <select name="type" id="type" class="form-control">
+                                <option value="">All Types</option>
+                                <option value="Temperature" selected="@(ViewBag.Type == "Temperature")">Temperature</option>
+                                <option value="Pressure" selected="@(ViewBag.Type == "Pressure")">Pressure</option>
+                                <option value="Voltage" selected="@(ViewBag.Type == "Voltage")">Voltage</option>
+                                <option value="Current" selected="@(ViewBag.Type == "Current")">Current</option>
+                                <option value="Motion" selected="@(ViewBag.Type == "Motion")">Motion</option>
+                                <option value="Door" selected="@(ViewBag.Type == "Door")">Door</option>
+                                <option value="System" selected="@(ViewBag.Type == "System")">System</option>
+                                <option value="Network" selected="@(ViewBag.Type == "Network")">Network</option>
+                                <option value="Security" selected="@(ViewBag.Type == "Security")">Security</option>
+                                <option value="Other" selected="@(ViewBag.Type == "Other")">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="acknowledged">Status:</label>
+                            <select name="acknowledged" id="acknowledged" class="form-control">
+                                <option value="">All Status</option>
+                                <option value="false" selected="@(ViewBag.Acknowledged == false)">Unacknowledged</option>
+                                <option value="true" selected="@(ViewBag.Acknowledged == true)">Acknowledged</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="search">Search:</label>
+                            <input type="text" name="search" id="search" class="form-control" placeholder="Title, message, or client" value="@ViewBag.Search">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary mr-2">Filter</button>
+                            <a href="@Url.Action("Index")" class="btn btn-secondary mr-2">Clear</a>
+                            <button type="button" class="btn btn-success" onclick="acknowledgeSelected()">
+                                <i class="fas fa-check"></i> Ack Selected
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="btn-group" role="group">
+                <a href="@Url.Action("Index", new { acknowledged = false })" class="btn btn-outline-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Unacknowledged (@Model.Count(a => !a.IsAcknowledged && a.IsActive))
+                </a>
+                <a href="@Url.Action("Index", new { severity = "Critical" })" class="btn btn-outline-danger">
+                    <i class="fas fa-fire"></i> Critical (@Model.Count(a => a.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.Critical && a.IsActive))
+                </a>
+                <a href="@Url.Action("Index", new { severity = "High" })" class="btn btn-outline-warning">
+                    <i class="fas fa-triangle-exclamation"></i> High (@Model.Count(a => a.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.High && a.IsActive))
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alarms Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">System Alarms</h6>
+                        <div>
+                            <input type="checkbox" id="selectAll" class="mr-2">
+                            <label for="selectAll">Select All</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th width="40">
+                                            <input type="checkbox" id="headerCheckbox">
+                                        </th>
+                                        <th>Time</th>
+                                        <th>Client</th>
+                                        <th>Alarm ID</th>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Severity</th>
+                                        <th>Value</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var alarm in Model)
+                                    {
+                                        <tr class="@(alarm.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.Critical ? "table-danger" :
+                                                                                                 alarm.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.High ? "table-warning" :
+                                                                                                 !alarm.IsAcknowledged ? "table-info" : "")">
+                                    <td>
+                                        @if (!alarm.IsAcknowledged && alarm.IsActive)
+                                                {
+                                                    <input type="checkbox" class="alarm-checkbox" value="@alarm.Id">
+                                                }
+                                            </td>
+                                            <td>
+                                                <span title="@alarm.AlarmTime.ToString("yyyy-MM-dd HH:mm:ss")">
+                                                    @alarm.AlarmTime.ToString("MMM dd HH:mm")
+                                                </span>
+                                                <br><small class="text-muted">@alarm.TimeAgo</small>
+                                            </td>
+                                            <td>
+                                                <a asp-controller="Clients" asp-action="Details" asp-route-id="@alarm.ClientId">
+                                                    <strong>@alarm.ClientName</strong>
+                                                </a>
+                                                <br><small class="text-muted">@alarm.ClientIdentifier</small>
+                                            </td>
+                                            <td><code>@alarm.AlarmId</code></td>
+                                            <td>
+                                                <strong>@alarm.Title</strong>
+                                                @if (!string.IsNullOrEmpty(alarm.Message))
+                                                {
+                                                    <br>
+                                        
+                                                    <small class="text-muted">@alarm.Message.Substring(0, Math.Min(alarm.Message.Length, 50))@(alarm.Message.Length > 50 ? "..." : "")</small>
+                                                }
+                                                @if (!string.IsNullOrEmpty(alarm.Zone))
+                                                {
+                                                    <br>
+                                        
+                                                    <span class="badge badge-light">Zone: @alarm.Zone</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-secondary">@alarm.TypeDisplay</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge @alarm.SeverityBadgeClass">@alarm.SeverityDisplay</span>
+                                            </td>
+                                            <td>
+                                                @if (alarm.NumericValue.HasValue)
+                                                {
+                                                    <strong>@alarm.FormattedValue</strong>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (alarm.IsAcknowledged)
+                                                {
+                                                    <span class="badge badge-success">
+                                                        <i class="fas fa-check"></i> Acknowledged
+                                                    </span>
+                                                    @if (alarm.AcknowledgedAt.HasValue)
+                                                    {
+                                                        <br>
+                                        
+                                                        <small class="text-muted">@alarm.AcknowledgedAt.Value.ToString("MMM dd HH:mm")</small>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(alarm.AcknowledgedBy))
+                                                    {
+                                                        <br>
+                                        
+                                                        <small class="text-muted">by @alarm.AcknowledgedBy</small>
+                                                    }
+                                                }
+                                                else if (alarm.IsActive)
+                                                {
+                                                    <span class="badge badge-warning">
+                                                        <i class="fas fa-exclamation-triangle"></i> Pending
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge badge-secondary">Inactive</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a asp-action="Details" asp-route-id="@alarm.Id" class="btn btn-info btn-sm">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    @if (!alarm.IsAcknowledged && alarm.IsActive)
+                                                    {
+                                                        <form asp-action="Acknowledge" asp-route-id="@alarm.Id" method="post" style="display: inline;">
+                                                            <button type="submit" class="btn btn-success btn-sm"
+                                                                    onclick="return confirm('Acknowledge this alarm?')"
+                                                                    title="Acknowledge">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-bell fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Alarms Found</h5>
+                            <p class="text-muted">No alarms match your current filter criteria.</p>
+                            <a href="@Url.Action("Index")" class="btn btn-primary">Clear Filters</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    @if (Model.Any())
+    {
+        <div class="row mt-4">
+            <div class="col-md-2">
+                <div class="card bg-danger text-white text-center">
+                    <div class="card-body">
+                        <h5>@Model.Count(a => a.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.Critical && a.IsActive)</h5>
+                        <small>Critical</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-warning text-white text-center">
+                    <div class="card-body">
+                        <h5>@Model.Count(a => a.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.High && a.IsActive)</h5>
+                        <small>High</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-info text-white text-center">
+                    <div class="card-body">
+                        <h5>@Model.Count(a => a.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.Medium && a.IsActive)</h5>
+                        <small>Medium</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-secondary text-white text-center">
+                    <div class="card-body">
+                        <h5>@Model.Count(a => a.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.Low && a.IsActive)</h5>
+                        <small>Low</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-success text-white text-center">
+                    <div class="card-body">
+                        <h5>@Model.Count(a => a.IsAcknowledged)</h5>
+                        <small>Acknowledged</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-primary text-white text-center">
+                    <div class="card-body">
+                        <h5>@Model.Count</h5>
+                        <small>Total</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Select/Deselect All functionality
+        document.getElementById('headerCheckbox').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.alarm-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+
+        // Update header checkbox based on individual selections
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('alarm-checkbox')) {
+                const checkboxes = document.querySelectorAll('.alarm-checkbox');
+                const checkedCount = document.querySelectorAll('.alarm-checkbox:checked').length;
+                const headerCheckbox = document.getElementById('headerCheckbox');
+
+                headerCheckbox.checked = checkedCount === checkboxes.length;
+                headerCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            }
+        });
+
+        // Acknowledge selected alarms
+        function acknowledgeSelected() {
+            const selectedAlarms = Array.from(document.querySelectorAll('.alarm-checkbox:checked'))
+                                      .map(cb => cb.value);
+
+            if (selectedAlarms.length === 0) {
+                alert('Please select at least one alarm to acknowledge.');
+                return;
+            }
+
+            if (confirm(`Acknowledge ${selectedAlarms.length} selected alarm(s)?`)) {
+                // Create a form dynamically to submit selected alarm IDs
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '@Url.Action("AcknowledgeMultiple")';
+
+                selectedAlarms.forEach(id => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'alarmIds';
+                    input.value = id;
+                    form.appendChild(input);
+                });
+
+                // Add anti-forgery token
+                const token = document.querySelector('input[name="__RequestVerificationToken"]');
+                if (token) {
+                    form.appendChild(token.cloneNode());
+                }
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Auto-refresh page every 30 seconds if no search filter is applied
+        @if (string.IsNullOrEmpty(ViewBag.Search))
+        {
+                <text>
+                setInterval(function() {
+                    if (document.visibilityState === 'visible') {
+                        window.location.reload();
+                    }
+                }, 30000);
+                </text>
+        }
+
+        // Sound notification for critical alarms (optional)
+        @if (Model.Any(a => a.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.Critical && !a.IsAcknowledged && a.IsActive))
+        {
+                <text>
+                // You can add a subtle sound notification here if desired
+                console.log('Critical alarms detected!');
+                </text>
+        }
+    </script>
+}

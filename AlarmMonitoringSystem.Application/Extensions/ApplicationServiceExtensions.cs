@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿// AlarmMonitoringSystem.Application/Extensions/ApplicationServiceExtensions.cs
+using AlarmMonitoringSystem.Application.Mappers;
 using AlarmMonitoringSystem.Application.Services;
 using AlarmMonitoringSystem.Domain.Interfaces.Services;
+using AutoMapper;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
+using Microsoft.Extensions.Logging;
 
 namespace AlarmMonitoringSystem.Application.Extensions
 {
@@ -21,11 +19,23 @@ namespace AlarmMonitoringSystem.Application.Extensions
             services.AddScoped<IConnectionLogService, ConnectionLogService>();
             services.AddScoped<ITcpMessageProcessorService, TcpMessageProcessorService>();
 
-            // Register AutoMapper
-            services.AddAutoMapper(Assembly.GetExecutingAssembly());
+            // ✅ FIXED: AutoMapper 15.x with logger factory parameter
+            services.AddSingleton<IMapper>(provider =>
+            {
+                var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+
+                var config = new MapperConfiguration(cfg =>
+                {
+                    cfg.AddProfile<AlarmMappingProfile>();
+                    cfg.AddProfile<ClientMappingProfile>();
+                    cfg.AddProfile<ConnectionLogMappingProfile>();
+                }, loggerFactory);
+
+                return config.CreateMapper();
+            });
 
             // Register FluentValidation
-            services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddValidatorsFromAssembly(typeof(ApplicationServiceExtensions).Assembly);
 
             return services;
         }

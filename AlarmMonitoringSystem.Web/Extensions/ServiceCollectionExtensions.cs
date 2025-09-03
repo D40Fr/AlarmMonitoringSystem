@@ -1,4 +1,5 @@
-﻿using AlarmMonitoringSystem.Application.Extensions;
+﻿// AlarmMonitoringSystem.Web/Extensions/ServiceCollectionExtensions.cs
+using AlarmMonitoringSystem.Application.Extensions;
 using AlarmMonitoringSystem.Domain.Interfaces.Services;
 using AlarmMonitoringSystem.Infrastructure.Data.Extensions;
 using AlarmMonitoringSystem.Infrastructure.TcpServer;
@@ -6,7 +7,6 @@ using AlarmMonitoringSystem.Infrastructure.TcpServer.Models;
 using AlarmMonitoringSystem.Web.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using AlarmMonitoringSystem.Application.Services;
 
 namespace AlarmMonitoringSystem.Web.Extensions
 {
@@ -30,18 +30,8 @@ namespace AlarmMonitoringSystem.Web.Extensions
             configuration.GetSection("TcpServer").Bind(tcpConfig);
             services.AddSingleton(tcpConfig);
 
-            // Add TCP server service
-            services.AddSingleton<ITcpServerService>(provider =>
-            {
-                var messageProcessor = provider.GetRequiredService<ITcpMessageProcessorService>();
-                var clientService = provider.GetRequiredService<IClientService>();
-                var connectionLogService = provider.GetRequiredService<IConnectionLogService>();
-                var logger = provider.GetRequiredService<ILogger<TcpServerService>>();
-                var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-                var config = provider.GetRequiredService<TcpServerConfiguration>();
-
-                return new TcpServerService(messageProcessor, clientService, connectionLogService, logger, loggerFactory, config);
-            });
+            // ✅ FIXED: Register TCP server service properly
+            services.AddSingleton<ITcpServerService, TcpServerService>();
 
             // Add background services
             services.AddHostedService<TcpServerBackgroundService>();

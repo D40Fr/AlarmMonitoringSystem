@@ -1,8 +1,292 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@model AlarmMonitoringSystem.Web.Models.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard - Alarm Monitoring System";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2">Dashboard</h1>
+            <p class="text-muted">Real-time monitoring and system overview</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Clients
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.Statistics.TotalClients</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-desktop fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Connected Clients
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.Statistics.ConnectedClients</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wifi fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Active Alarms
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.Statistics.ActiveAlarms</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Unacknowledged
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.Statistics.UnacknowledgedAlarms</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-bell fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TCP Server Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">TCP Server Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Port:</strong> @Model.Statistics.TcpServerPort
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Uptime:</strong> @Model.Statistics.UptimeDisplay
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Messages Received:</strong> @Model.Statistics.TotalMessagesReceived.ToString("N0")
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge badge-success">Running</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- Recent Alarms -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Alarms</h6>
+                    <a asp-controller="Alarms" asp-action="Index" class="btn btn-primary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentAlarms.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Client</th>
+                                        <th>Title</th>
+                                        <th>Severity</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var alarm in Model.RecentAlarms)
+                                    {
+                                        <tr>
+                                            <td>@alarm.AlarmTime.ToString("HH:mm:ss")</td>
+                                            <td>@alarm.ClientName</td>
+                                            <td>
+                                                <a asp-controller="Alarms" asp-action="Details" asp-route-id="@alarm.Id">
+                                                    @alarm.Title
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge @alarm.SeverityBadgeClass">@alarm.SeverityDisplay</span>
+                                            </td>
+                                            <td>
+                                                @if (alarm.IsAcknowledged)
+                                                {
+                                                    <span class="badge badge-secondary">Acknowledged</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge badge-warning">Pending</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No recent alarms</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Clients Status -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Client Status</h6>
+                    <a asp-controller="Clients" asp-action="Index" class="btn btn-primary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    @if (Model.Clients.Any())
+                    {
+                        @foreach (var client in Model.Clients.Take(8))
+                        {
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="mr-3">
+                                    @if (client.Status == AlarmMonitoringSystem.Domain.Enums.ConnectionStatus.Connected)
+                                    {
+                                        <i class="fas fa-circle text-success"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-circle text-danger"></i>
+                                    }
+                                </div>
+                                <div class="flex-grow-1">
+                                    <a asp-controller="Clients" asp-action="Details" asp-route-id="@client.Id" class="text-decoration-none">
+                                        <strong>@client.Name</strong>
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">@client.IpAddress:@client.Port</small>
+                                </div>
+                                <div class="text-right">
+                                    <small class="@client.StatusCssClass">@client.StatusDisplay</small>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">No clients registered</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Logs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Connection Activity</h6>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentConnectionLogs.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Client</th>
+                                        <th>Status</th>
+                                        <th>Message</th>
+                                        <th>Level</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var log in Model.RecentConnectionLogs.Take(10))
+                                    {
+                                        <tr>
+                                            <td>@log.LogTime.ToString("HH:mm:ss")</td>
+                                            <td>@log.ClientName</td>
+                                            <td>
+                                                <i class="@log.StatusIcon"></i>
+                                                @log.StatusDisplay
+                                            </td>
+                                            <td>@log.Message</td>
+                                            <td>
+                                                <span class="badge @log.LogLevelBadgeClass">@log.LogLevelDisplay</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No recent connection activity</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Styles {
+    <style>
+        .border-left-primary {
+            border-left: 0.25rem solid #4e73df !important;
+        }
+        .border-left-success {
+            border-left: 0.25rem solid #1cc88a !important;
+        }
+        .border-left-warning {
+            border-left: 0.25rem solid #f6c23e !important;
+        }
+        .border-left-danger {
+            border-left: 0.25rem solid #e74a3b !important;
+        }
+        .badge-info { background-color: #36b9cc; }
+        .badge-warning { background-color: #f6c23e; }
+        .badge-danger { background-color: #e74a3b; }
+        .badge-dark { background-color: #5a5c69; }
+    </style>
+}
