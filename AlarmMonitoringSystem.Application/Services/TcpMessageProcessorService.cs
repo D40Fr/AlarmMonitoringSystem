@@ -1,9 +1,11 @@
-﻿using System;
+﻿// AlarmMonitoringSystem.Application/Services/TcpMessageProcessorService.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using AlarmMonitoringSystem.Application.DTOs;
+using AlarmMonitoringSystem.Application.Interfaces; // ✅ FIX: Use Application layer interface
 using AlarmMonitoringSystem.Domain.Interfaces.Services;
 using AlarmMonitoringSystem.Domain.ValueObjects;
 using AutoMapper;
@@ -26,6 +28,7 @@ namespace AlarmMonitoringSystem.Application.Services
         private readonly IClientService _clientService;
         private readonly IMapper _mapper;
         private readonly IValidator<IncomingAlarmDto> _validator;
+        private readonly IRealtimeNotificationService _realtimeNotificationService; // ✅ FIX: Use Application layer interface
         private readonly ILogger<TcpMessageProcessorService> _logger;
 
         public TcpMessageProcessorService(
@@ -33,12 +36,14 @@ namespace AlarmMonitoringSystem.Application.Services
             IClientService clientService,
             IMapper mapper,
             IValidator<IncomingAlarmDto> validator,
+            IRealtimeNotificationService realtimeNotificationService, // ✅ FIX: Use Application layer interface
             ILogger<TcpMessageProcessorService> logger)
         {
             _alarmService = alarmService;
             _clientService = clientService;
             _mapper = mapper;
             _validator = validator;
+            _realtimeNotificationService = realtimeNotificationService; // ✅ FIX: Use Application layer interface
             _logger = logger;
         }
 
@@ -78,7 +83,21 @@ namespace AlarmMonitoringSystem.Application.Services
                     incomingAlarm.AdditionalData);
 
                 // Process alarm through business logic
-                await _alarmService.ProcessAlarmAsync(client.Id, alarmData, cancellationToken);
+                var processedAlarm = await _alarmService.ProcessAlarmAsync(client.Id, alarmData, cancellationToken);
+
+                // ✅ FIX: Broadcast new alarm via notification service
+                try
+                {
+                    var alarmDto = _mapper.Map<AlarmDto>(processedAlarm);
+                    await _realtimeNotificationService.NotifyNewAlarmAsync(alarmDto);
+
+                    _logger.LogInformation("Successfully broadcasted new alarm {AlarmId} via notifications", incomingAlarm.AlarmId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to broadcast alarm {AlarmId} via notifications", incomingAlarm.AlarmId);
+                    // Don't fail the entire operation if notification broadcast fails
+                }
 
                 _logger.LogInformation("Successfully processed alarm {AlarmId} from client {ClientId}",
                     incomingAlarm.AlarmId, clientId);

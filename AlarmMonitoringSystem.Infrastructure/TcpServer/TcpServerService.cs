@@ -1,9 +1,12 @@
 // AlarmMonitoringSystem.Infrastructure/TcpServer/TcpServerService.cs
+using AlarmMonitoringSystem.Application.DTOs;
+using AlarmMonitoringSystem.Application.Interfaces;
 using AlarmMonitoringSystem.Application.Services;
 using AlarmMonitoringSystem.Domain.Entities;
 using AlarmMonitoringSystem.Domain.Interfaces.Services;
 using AlarmMonitoringSystem.Domain.ValueObjects;
 using AlarmMonitoringSystem.Infrastructure.TcpServer.Models;
+using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -441,8 +444,24 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
                 using var scope = _serviceScopeFactory.CreateScope();
                 var clientService = scope.ServiceProvider.GetRequiredService<IClientService>();
                 await clientService.UpdateClientStatusAsync(clientId, Domain.Enums.ConnectionStatus.Disconnected);
-                
+
                 _logger.LogInformation("Updated client {ClientId} status to Disconnected in database", clientId);
+
+                // ? ADD: Broadcast client disconnection via SignalR
+                try
+                {
+                    var signalRService = scope.ServiceProvider.GetService<IRealtimeNotificationService>();
+                    if (signalRService != null)
+                    {
+                        await signalRService.NotifyClientDisconnectedAsync(clientId);
+                        _logger.LogInformation("Successfully broadcasted client disconnection {ClientId} via SignalR", clientId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to broadcast client disconnection {ClientId} via SignalR", clientId);
+                    // Don't fail the disconnection process if SignalR broadcast fails
+                }
             }
             catch (Exception ex)
             {
@@ -460,7 +479,6 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
                 _logger.LogError(ex, "Error notifying client {ClientId} disconnection", clientId);
             }
         }
-
         private async Task OnMessageReceived(TcpMessage message)
         {
             Interlocked.Increment(ref _totalMessagesReceived);
@@ -515,13 +533,40 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
 
                 if (ClientConnected != null)
                     await ClientConnected.Invoke(clientInfoVO);
+
+                // ? ADD: Broadcast client connection via SignalR
+                try
+                {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var signalRService = scope.ServiceProvider.GetService<IRealtimeNotificationService>();
+
+                    if (signalRService != null)
+                    {
+                        // Find the registered client to get proper DTO
+                        var clientService = scope.ServiceProvider.GetRequiredService<IClientService>();
+                        var registeredClient = await clientService.GetClientByClientIdAsync(clientInfo.ClientId);
+
+                        if (registeredClient != null)
+                        {
+                            var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
+                            var clientDto = mapper.Map<ClientDto>(registeredClient);
+
+                            await signalRService.NotifyClientConnectedAsync(clientDto);
+                            _logger.LogInformation("Successfully broadcasted client connection {ClientId} via SignalR", clientInfo.ClientId);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to broadcast client connection {ClientId} via SignalR", clientInfo.ClientId);
+                    // Don't fail the connection process if SignalR broadcast fails
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error notifying client {ClientId} connection", clientInfo.ClientId);
             }
         }
-
         public void Dispose()
         {
             try

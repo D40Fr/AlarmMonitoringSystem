@@ -11,7 +11,7 @@
         </div>
     </div>
 
-    <!-- Statistics Cards -->
+    <!-- Statistics Cards section - add data attributes -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-2">
@@ -21,7 +21,7 @@
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Total Clients
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.Statistics.TotalClients</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-stat="TotalClients">@Model.Statistics.TotalClients</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-desktop fa-2x text-gray-300"></i>
@@ -39,7 +39,7 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Connected Clients
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.Statistics.ConnectedClients</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-stat="ConnectedClients">@Model.Statistics.ConnectedClients</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-wifi fa-2x text-gray-300"></i>
@@ -57,7 +57,7 @@
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Active Alarms
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.Statistics.ActiveAlarms</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-stat="ActiveAlarms">@Model.Statistics.ActiveAlarms</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
@@ -75,7 +75,7 @@
                             <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
                                 Unacknowledged
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.Statistics.UnacknowledgedAlarms</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-stat="UnacknowledgedAlarms">@Model.Statistics.UnacknowledgedAlarms</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-bell fa-2x text-gray-300"></i>

@@ -1,3 +1,4 @@
+﻿// AlarmMonitoringSystem.Web/Controllers/HomeController.cs
 using AlarmMonitoringSystem.Web.Models;
 using AlarmMonitoringSystem.Application.DTOs;
 using AlarmMonitoringSystem.Domain.Interfaces.Services;
@@ -47,6 +48,17 @@ namespace AlarmMonitoringSystem.Web.Controllers
                 var alarmDtos = _mapper.Map<List<AlarmDto>>(recentAlarms);
                 var logDtos = _mapper.Map<List<ConnectionLogDto>>(recentLogs);
 
+                // ✅ FIX: Get accurate connection counts
+                var tcpConnectedCount = await _tcpServerService.GetConnectedClientCountAsync();
+                var dbConnectedCount = await _clientService.GetConnectedClientCountAsync();
+
+                // Log discrepancies for debugging
+                if (tcpConnectedCount != dbConnectedCount)
+                {
+                    _logger.LogWarning("Connection count mismatch - TCP Server: {TcpCount}, Database: {DbCount}",
+                        tcpConnectedCount, dbConnectedCount);
+                }
+
                 // Create dashboard view model
                 var viewModel = new DashboardViewModel
                 {
@@ -56,7 +68,7 @@ namespace AlarmMonitoringSystem.Web.Controllers
                     Statistics = new DashboardStatistics
                     {
                         TotalClients = clientDtos.Count,
-                        ConnectedClients = clientDtos.Count(c => c.Status == Domain.Enums.ConnectionStatus.Connected),
+                        ConnectedClients = Math.Max(tcpConnectedCount, dbConnectedCount), // ✅ Use the higher count
                         TotalAlarms = await _alarmService.GetAlarmCountAsync(),
                         ActiveAlarms = await _alarmService.GetActiveAlarmCountAsync(),
                         UnacknowledgedAlarms = await _alarmService.GetUnacknowledgedAlarmCountAsync(),
@@ -73,6 +85,11 @@ namespace AlarmMonitoringSystem.Web.Controllers
                 _logger.LogError(ex, "Error loading dashboard");
                 return View("Error", new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
             }
+        }
+
+        public IActionResult Privacy()
+        {
+            return View();
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

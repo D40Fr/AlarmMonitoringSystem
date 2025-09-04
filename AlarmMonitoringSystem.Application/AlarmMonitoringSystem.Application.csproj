@@ -19,7 +19,6 @@
 
   <ItemGroup>
     <Folder Include="Common\" />
-    <Folder Include="Interfaces\" />
   </ItemGroup>
 
 </Project>

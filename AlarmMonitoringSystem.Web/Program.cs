@@ -1,5 +1,7 @@
+﻿// AlarmMonitoringSystem.Web/Program.cs
 using AlarmMonitoringSystem.Infrastructure.Data.Extensions;
 using AlarmMonitoringSystem.Web.Extensions;
+using AlarmMonitoringSystem.Web.Hubs; // ✅ ADD: Hub namespace
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,8 +18,7 @@ builder.Host.UseSerilog();
 // Add services to the container
 builder.Services.AddControllersWithViews();
 
-// Add SignalR
-builder.Services.AddSignalR();
+// ✅ SignalR is now added via AddAlarmMonitoringServices()
 
 // Add our custom services
 builder.Services.AddAlarmMonitoringServices(builder.Configuration);
@@ -53,8 +54,8 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Map SignalR hubs (we'll add this in next phase)
-// app.MapHub<AlarmMonitoringHub>("/alarmHub");
+// ✅ ADD: Map SignalR hub
+app.MapHub<AlarmMonitoringHub>("/alarmHub");
 
 // Log startup
 Log.Information("Alarm Monitoring System starting up...");

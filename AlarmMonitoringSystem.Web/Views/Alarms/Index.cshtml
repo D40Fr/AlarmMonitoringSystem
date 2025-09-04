@@ -149,11 +149,14 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <!-- Add data-alarm-id attributes to alarm table rows in Views/Alarms/Index.cshtml -->
+                                    <!-- In the table body section, update each row: -->
                                     @foreach (var alarm in Model)
                                     {
                                         <tr class="@(alarm.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.Critical ? "table-danger" :
-                                                                                                 alarm.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.High ? "table-warning" :
-                                                                                                 !alarm.IsAcknowledged ? "table-info" : "")">
+                                                             alarm.Severity == AlarmMonitoringSystem.Domain.Enums.AlarmSeverity.High ? "table-warning" :
+                                                             !alarm.IsAcknowledged ? "table-info" : "")"
+                                    data-alarm-id="@alarm.Id">
                                     <td>
                                         @if (!alarm.IsAcknowledged && alarm.IsActive)
                                                 {
@@ -178,13 +181,11 @@
                                                 @if (!string.IsNullOrEmpty(alarm.Message))
                                                 {
                                                     <br>
-                                        
                                                     <small class="text-muted">@alarm.Message.Substring(0, Math.Min(alarm.Message.Length, 50))@(alarm.Message.Length > 50 ? "..." : "")</small>
                                                 }
                                                 @if (!string.IsNullOrEmpty(alarm.Zone))
                                                 {
                                                     <br>
-                                        
                                                     <span class="badge badge-light">Zone: @alarm.Zone</span>
                                                 }
                                             </td>
@@ -204,7 +205,7 @@
                                                     <span class="text-muted">-</span>
                                                 }
                                             </td>
-                                            <td>
+                                            <td class="alarm-status">
                                                 @if (alarm.IsAcknowledged)
                                                 {
                                                     <span class="badge badge-success">
@@ -213,13 +214,11 @@
                                                     @if (alarm.AcknowledgedAt.HasValue)
                                                     {
                                                         <br>
-                                        
                                                         <small class="text-muted">@alarm.AcknowledgedAt.Value.ToString("MMM dd HH:mm")</small>
                                                     }
                                                     @if (!string.IsNullOrEmpty(alarm.AcknowledgedBy))
                                                     {
                                                         <br>
-                                        
                                                         <small class="text-muted">by @alarm.AcknowledgedBy</small>
                                                     }
                                                 }

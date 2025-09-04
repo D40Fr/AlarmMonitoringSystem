@@ -1,9 +1,11 @@
-﻿using System;
+﻿// AlarmMonitoringSystem.Application/Services/AlarmService.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using AlarmMonitoringSystem.Application.DTOs;
+using AlarmMonitoringSystem.Application.Interfaces; // ✅ FIX: Use Application layer interface
 using AlarmMonitoringSystem.Domain.Entities;
 using AlarmMonitoringSystem.Domain.Enums;
 using AlarmMonitoringSystem.Domain.Interfaces.Repositories;
@@ -18,12 +20,18 @@ namespace AlarmMonitoringSystem.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IRealtimeNotificationService _realtimeNotificationService; // ✅ FIX: Use Application layer interface
         private readonly ILogger<AlarmService> _logger;
 
-        public AlarmService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<AlarmService> logger)
+        public AlarmService(
+            IUnitOfWork unitOfWork,
+            IMapper mapper,
+            IRealtimeNotificationService realtimeNotificationService, // ✅ FIX: Use Application layer interface
+            ILogger<AlarmService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _realtimeNotificationService = realtimeNotificationService; // ✅ FIX: Use Application layer interface
             _logger = logger;
         }
 
@@ -128,6 +136,7 @@ namespace AlarmMonitoringSystem.Application.Services
             return await _unitOfWork.Alarms.GetRecentAlarmsAsync(count, cancellationToken);
         }
 
+        // ✅ FIX: Add notification for alarm acknowledgment
         public async Task<Alarm> AcknowledgeAlarmAsync(Guid alarmId, string acknowledgedBy, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Acknowledging alarm {AlarmId} by {User}", alarmId, acknowledgedBy);
@@ -147,12 +156,25 @@ namespace AlarmMonitoringSystem.Application.Services
             await _unitOfWork.Alarms.AcknowledgeAlarmAsync(alarmId, acknowledgedBy, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+            // ✅ FIX: Broadcast alarm acknowledgment via notification service
+            try
+            {
+                await _realtimeNotificationService.NotifyAlarmAcknowledgedAsync(alarmId, acknowledgedBy);
+                _logger.LogInformation("Successfully broadcasted alarm acknowledgment {AlarmId} via notifications", alarmId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to broadcast alarm acknowledgment {AlarmId} via notifications", alarmId);
+                // Don't fail the operation if notification broadcast fails
+            }
+
             // Get updated alarm
             var updatedAlarm = await _unitOfWork.Alarms.GetByIdAsync(alarmId, cancellationToken);
             _logger.LogInformation("Alarm {AlarmId} acknowledged by {User}", alarmId, acknowledgedBy);
             return updatedAlarm!;
         }
 
+        // ... rest of the methods remain the same
         public async Task<Alarm> DeactivateAlarmAsync(Guid alarmId, CancellationToken cancellationToken = default)
         {
             var alarm = await _unitOfWork.Alarms.GetByIdAsync(alarmId, cancellationToken);
@@ -197,7 +219,6 @@ namespace AlarmMonitoringSystem.Application.Services
 
         public async Task<Dictionary<AlarmSeverity, int>> GetAlarmCountsBySeverityAsync(CancellationToken cancellationToken = default)
         {
-            // Use basic repository methods since the advanced method doesn't exist in interface
             var activeAlarms = await _unitOfWork.Alarms.GetActiveAlarmsAsync(cancellationToken);
             return activeAlarms
                 .GroupBy(a => a.Severity)
@@ -206,7 +227,6 @@ namespace AlarmMonitoringSystem.Application.Services
 
         public async Task<Dictionary<AlarmType, int>> GetAlarmCountsByTypeAsync(CancellationToken cancellationToken = default)
         {
-            // Use basic repository methods since the advanced method doesn't exist in interface
             var activeAlarms = await _unitOfWork.Alarms.GetActiveAlarmsAsync(cancellationToken);
             return activeAlarms
                 .GroupBy(a => a.Type)
@@ -214,4 +234,3 @@ namespace AlarmMonitoringSystem.Application.Services
         }
     }
 }
-

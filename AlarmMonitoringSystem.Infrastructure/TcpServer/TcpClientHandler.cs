@@ -175,13 +175,13 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
                 var socket = _clientInfo.TcpClient.Client;
                 bool part1 = socket.Poll(1000, SelectMode.SelectRead);
                 bool part2 = (socket.Available == 0);
-                
+
                 if (part1 && part2)
                 {
                     // Connection has been closed
                     return false;
                 }
-                
+
                 return socket.Connected;
             }
             catch
@@ -358,7 +358,7 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
                 {
                     // Log disconnection
                     await connectionLogService.LogClientDisconnectedAsync(clientGuid, reason);
-                    
+
                     // Update client status in database
                     await clientService.UpdateClientStatusAsync(clientGuid, ConnectionStatus.Disconnected);
                 }

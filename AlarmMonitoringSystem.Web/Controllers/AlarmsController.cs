@@ -1,5 +1,8 @@
-﻿using AlarmMonitoringSystem.Application.DTOs;
+﻿// AlarmMonitoringSystem.Web/Controllers/AlarmsController.cs
+using AlarmMonitoringSystem.Application.DTOs;
+using AlarmMonitoringSystem.Application.Interfaces;
 using AlarmMonitoringSystem.Domain.Interfaces.Services;
+using AlarmMonitoringSystem.Web.Services;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,17 +12,20 @@ namespace AlarmMonitoringSystem.Web.Controllers
     {
         private readonly IAlarmService _alarmService;
         private readonly IClientService _clientService;
+        private readonly IRealtimeNotificationService _realtimeNotificationService; // ✅ ADD: SignalR
         private readonly IMapper _mapper;
         private readonly ILogger<AlarmsController> _logger;
 
         public AlarmsController(
             IAlarmService alarmService,
             IClientService clientService,
+            IRealtimeNotificationService signalRNotificationService, // ✅ ADD: SignalR
             IMapper mapper,
             ILogger<AlarmsController> logger)
         {
             _alarmService = alarmService;
             _clientService = clientService;
+            _realtimeNotificationService = signalRNotificationService; // ✅ ADD: SignalR
             _mapper = mapper;
             _logger = logger;
         }
@@ -91,7 +97,19 @@ namespace AlarmMonitoringSystem.Web.Controllers
             try
             {
                 var userName = "Web User"; // You can get this from authentication later
-                await _alarmService.AcknowledgeAlarmAsync(id, userName);
+                var acknowledgedAlarm = await _alarmService.AcknowledgeAlarmAsync(id, userName);
+
+                // ✅ ADD: Broadcast acknowledgment (this is handled in AlarmService now, but we can add UI refresh)
+                try
+                {
+                    await _realtimeNotificationService.RefreshDashboardStatsAsync();
+                    await _realtimeNotificationService.RefreshAlarmListAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to broadcast UI refresh for alarm acknowledgment {AlarmId}", id);
+                    // Don't fail the operation
+                }
 
                 TempData["Success"] = "Alarm acknowledged successfully";
                 return RedirectToAction(nameof(Details), new { id });
@@ -101,6 +119,52 @@ namespace AlarmMonitoringSystem.Web.Controllers
                 _logger.LogError(ex, "Error acknowledging alarm {AlarmId}", id);
                 TempData["Error"] = "Failed to acknowledge alarm";
                 return RedirectToAction(nameof(Details), new { id });
+            }
+        }
+
+        // ✅ ADD: AJAX endpoint for real-time alarm updates
+        [HttpGet]
+        public async Task<IActionResult> GetRecentAlarms(int count = 10)
+        {
+            try
+            {
+                var alarms = await _alarmService.GetRecentAlarmsAsync(count);
+                var alarmDtos = _mapper.Map<List<AlarmDto>>(alarms);
+
+                return Json(new { success = true, alarms = alarmDtos });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting recent alarms");
+                return Json(new { success = false, error = "Failed to load recent alarms" });
+            }
+        }
+
+        // ✅ ADD: AJAX endpoint for alarm statistics
+        [HttpGet]
+        public async Task<IActionResult> GetAlarmStats()
+        {
+            try
+            {
+                var totalCount = await _alarmService.GetAlarmCountAsync();
+                var activeCount = await _alarmService.GetActiveAlarmCountAsync();
+                var unacknowledgedCount = await _alarmService.GetUnacknowledgedAlarmCountAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    stats = new
+                    {
+                        total = totalCount,
+                        active = activeCount,
+                        unacknowledged = unacknowledgedCount
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting alarm statistics");
+                return Json(new { success = false, error = "Failed to load alarm statistics" });
             }
         }
     }

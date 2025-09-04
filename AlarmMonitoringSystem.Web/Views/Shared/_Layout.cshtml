@@ -52,6 +52,11 @@
                         <li class="nav-item">
                             <span class="navbar-text">
                                 <i class="fas fa-circle text-success"></i> TCP Server: Port 6060
+                                <!-- ✅ ADD: SignalR status indicator -->
+                                <span class="ms-2">
+                                    <i id="signalr-indicator" class="fas fa-circle text-secondary" title="SignalR Status"></i>
+                                    <small>Real-time</small>
+                                </span>
                             </span>
                         </li>
                         <li class="nav-item dropdown">
@@ -107,7 +112,11 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- ✅ ADD: SignalR JavaScript client library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <!-- ✅ ADD: SignalR client script -->
+    <script src="~/js/signalr-client.js" asp-append-version="true"></script>
 
     <!-- Global JavaScript -->
     <script>
@@ -142,7 +151,29 @@
                     link.classList.add('active');
                 }
             });
+
+            // ✅ ADD: Update SignalR status indicator
+            updateSignalRStatus();
         });
+
+        // ✅ ADD: SignalR status indicator function
+        function updateSignalRStatus() {
+            const indicator = document.getElementById('signalr-indicator');
+            if (indicator && window.alarmSignalR) {
+                const state = alarmSignalR.getConnectionState();
+
+                if (state.isConnected) {
+                    indicator.className = 'fas fa-circle text-success';
+                    indicator.title = 'SignalR: Connected';
+                } else {
+                    indicator.className = 'fas fa-circle text-danger';
+                    indicator.title = 'SignalR: Disconnected';
+                }
+            }
+        }
+
+        // Update SignalR status every 5 seconds
+        setInterval(updateSignalRStatus, 5000);
 
         // Global error handling
         window.addEventListener('error', function(e) {
@@ -234,6 +265,11 @@
             box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
         }
 
+        /* ✅ ADD: SignalR status styles */
+        #signalr-indicator {
+            transition: color 0.3s ease;
+        }
+
         /* Responsive adjustments */
         @@media (max-width: 768px) {
             .container-fluid {
@@ -269,6 +305,17 @@
         .spinner-border-sm {
             width: 1rem;
             height: 1rem;
+        }
+
+        /* ✅ ADD: Real-time update indicators */
+        .realtime-update {
+            animation: fadeInOut 2s ease-in-out;
+        }
+
+        @@keyframes fadeInOut {
+            0% { background-color: transparent; }
+            50% { background-color: rgba(40, 167, 69, 0.1); }
+            100% { background-color: transparent; }
         }
     </style>
 </body>
