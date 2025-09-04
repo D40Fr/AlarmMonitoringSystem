@@ -34,7 +34,6 @@ namespace AlarmMonitoringSystem.Application.Mappers
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.AcknowledgedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.AcknowledgedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.Client, opt => opt.Ignore())
                 .ForMember(dest => dest.RawData, opt => opt.MapFrom<JsonSerializationResolver>());
 

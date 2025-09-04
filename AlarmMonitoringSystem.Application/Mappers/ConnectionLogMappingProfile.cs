@@ -27,7 +27,6 @@ namespace AlarmMonitoringSystem.Application.Mappers
                 .ForMember(dest => dest.ClientName, opt => opt.Ignore())
                 .ForMember(dest => dest.ClientIdentifier, opt => opt.Ignore())
                 .ForMember(dest => dest.LogTime, opt => opt.MapFrom(src => src.EventTime))
-                .ForMember(dest => dest.LogLevel, opt => opt.MapFrom(src => src.LogLevel))
                 .ForMember(dest => dest.Message, opt => opt.MapFrom(src => src.Message))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
                 .ForMember(dest => dest.IpAddress, opt => opt.MapFrom(src => src.IpAddress))
@@ -40,7 +39,6 @@ namespace AlarmMonitoringSystem.Application.Mappers
                     src.ClientId,
                     src.Status,
                     src.Message,
-                    src.LogLevel,
                     src.IpAddress,
                     src.Port,
                     src.Details));

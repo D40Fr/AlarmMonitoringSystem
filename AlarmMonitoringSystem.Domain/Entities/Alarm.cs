@@ -34,14 +34,12 @@ namespace AlarmMonitoringSystem.Domain.Entities
 
         public DateTime? AcknowledgedAt { get; set; }
 
-        [MaxLength(100)]
-        public string? AcknowledgedBy { get; set; }
+
 
         public bool IsActive { get; set; } = true;
 
         // Additional properties for alarm data
-        [MaxLength(50)]
-        public string? Zone { get; set; }
+
 
         public decimal? NumericValue { get; set; }
 

@@ -23,7 +23,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Migrations
                     Port = table.Column<int>(type: "INTEGER", nullable: false),
                     Status = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0),
                     LastConnectedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    LastDisconnectedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
                     IsActive = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
                     CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
@@ -47,9 +46,7 @@ namespace AlarmMonitoringSystem.Infrastructure.Migrations
                     AlarmTime = table.Column<DateTime>(type: "TEXT", nullable: false),
                     IsAcknowledged = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
                     AcknowledgedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    AcknowledgedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsActive = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
-                    Zone = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
                     NumericValue = table.Column<decimal>(type: "TEXT", precision: 18, scale: 4, nullable: true),
                     Unit = table.Column<string>(type: "TEXT", maxLength: 20, nullable: true),
                     RawData = table.Column<string>(type: "TEXT", nullable: true),
@@ -75,7 +72,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Migrations
                     ClientId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Status = table.Column<int>(type: "INTEGER", nullable: false),
                     Message = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    LogLevel = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 1),
                     LogTime = table.Column<DateTime>(type: "TEXT", nullable: false),
                     IpAddress = table.Column<string>(type: "TEXT", maxLength: 45, nullable: true),
                     Port = table.Column<int>(type: "INTEGER", nullable: true),
@@ -165,11 +161,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Migrations
                 name: "IX_ConnectionLogs_ClientId_LogTime",
                 table: "ConnectionLogs",
                 columns: new[] { "ClientId", "LogTime" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ConnectionLogs_LogLevel",
-                table: "ConnectionLogs",
-                column: "LogLevel");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ConnectionLogs_LogTime",

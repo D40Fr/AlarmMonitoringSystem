@@ -55,11 +55,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Configurations
             builder.Property(a => a.IsActive)
                 .HasDefaultValue(true);
 
-            builder.Property(a => a.AcknowledgedBy)
-                .HasMaxLength(100);
-
-            builder.Property(a => a.Zone)
-                .HasMaxLength(50);
 
             builder.Property(a => a.NumericValue)
                 .HasPrecision(18, 4);

@@ -28,9 +28,6 @@ namespace AlarmMonitoringSystem.Application.Validators
                 .IsInEnum()
                 .WithMessage("Invalid connection status.");
 
-            RuleFor(x => x.LogLevel)
-                .IsInEnum()
-                .WithMessage("Invalid log level.");
 
             RuleFor(x => x.Message)
                 .MaximumLength(500)

@@ -34,11 +34,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Configurations
             builder.Property(cl => cl.Message)
                 .HasMaxLength(500);
 
-            builder.Property(cl => cl.LogLevel)
-                .IsRequired()
-                .HasConversion<int>()
-                .HasDefaultValue(LogLevel.Information);
-
             builder.Property(cl => cl.LogTime)
                 .IsRequired();
 
@@ -60,9 +55,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Configurations
 
             builder.HasIndex(cl => cl.Status)
                 .HasDatabaseName("IX_ConnectionLogs_Status");
-
-            builder.HasIndex(cl => cl.LogLevel)
-                .HasDatabaseName("IX_ConnectionLogs_LogLevel");
 
             builder.HasIndex(cl => new { cl.ClientId, cl.LogTime })
                 .HasDatabaseName("IX_ConnectionLogs_ClientId_LogTime");

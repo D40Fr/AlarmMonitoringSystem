@@ -65,7 +65,6 @@ namespace AlarmMonitoringSystem.Application.Services
                 Type = alarmData.Type,
                 Severity = alarmData.Severity,
                 AlarmTime = alarmData.AlarmTime,
-                Zone = alarmData.Zone,
                 NumericValue = alarmData.NumericValue,
                 Unit = alarmData.Unit,
                 IsActive = true,

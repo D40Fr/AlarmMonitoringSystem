@@ -31,14 +31,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<IEnumerable<ConnectionLog>> GetByLogLevelAsync(LogLevel logLevel, CancellationToken cancellationToken = default)
-        {
-            return await _dbSet
-                .Include(cl => cl.Client)
-                .Where(cl => cl.LogLevel == logLevel)
-                .OrderByDescending(cl => cl.LogTime)
-                .ToListAsync(cancellationToken);
-        }
 
         public async Task<IEnumerable<ConnectionLog>> GetByDateRangeAsync(
             DateTime startDate,
@@ -107,28 +99,9 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Repositories
                 .FirstOrDefaultAsync(cl => cl.Id == id, cancellationToken);
         }
 
-        // Get logs by multiple log levels
-        public async Task<IEnumerable<ConnectionLog>> GetByLogLevelsAsync(
-            IEnumerable<LogLevel> logLevels,
-            CancellationToken cancellationToken = default)
-        {
-            var levels = logLevels.ToList();
-            return await _dbSet
-                .Include(cl => cl.Client)
-                .Where(cl => levels.Contains(cl.LogLevel))
-                .OrderByDescending(cl => cl.LogTime)
-                .ToListAsync(cancellationToken);
-        }
 
-        // Get error logs for troubleshooting
-        public async Task<IEnumerable<ConnectionLog>> GetErrorLogsAsync(CancellationToken cancellationToken = default)
-        {
-            return await _dbSet
-                .Include(cl => cl.Client)
-                .Where(cl => cl.LogLevel == LogLevel.Error || cl.LogLevel == LogLevel.Critical)
-                .OrderByDescending(cl => cl.LogTime)
-                .ToListAsync(cancellationToken);
-        }
+
+
 
         // Get connection events (Connected/Disconnected only)
         public async Task<IEnumerable<ConnectionLog>> GetConnectionEventsAsync(CancellationToken cancellationToken = default)
@@ -148,12 +121,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Repositories
                 .ToDictionaryAsync(g => g.Key, g => g.Count(), cancellationToken);
         }
 
-        public async Task<Dictionary<LogLevel, int>> GetLogLevelCountsAsync(CancellationToken cancellationToken = default)
-        {
-            return await _dbSet
-                .GroupBy(cl => cl.LogLevel)
-                .ToDictionaryAsync(g => g.Key, g => g.Count(), cancellationToken);
-        }
 
         // Get logs for specific client and date range
         public async Task<IEnumerable<ConnectionLog>> GetClientLogsByDateRangeAsync(

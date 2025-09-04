@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/C:\\Users\\furkan\\Desktop\\AlarmMonitoringSystem/**)",
+      "Read(/C:\\Users\\furkan\\Desktop\\AlarmMonitoringSystem\\AlarmMonitoringSystem.Web/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

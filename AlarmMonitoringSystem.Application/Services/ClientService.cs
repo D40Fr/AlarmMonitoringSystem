@@ -50,7 +50,6 @@ namespace AlarmMonitoringSystem.Application.Services
                 Status = clientInfo.Status,
                 IsActive = clientInfo.IsActive,
                 LastConnectedAt = clientInfo.LastConnectedAt,
-                LastDisconnectedAt = clientInfo.LastDisconnectedAt
             };
 
             await _unitOfWork.Clients.AddAsync(client, cancellationToken);

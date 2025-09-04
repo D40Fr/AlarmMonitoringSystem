@@ -13,7 +13,6 @@ namespace AlarmMonitoringSystem.Domain.ValueObjects
         public ConnectionStatus Status { get; init; }
         public DateTime EventTime { get; init; } = DateTime.UtcNow;
         public string? Message { get; init; }
-        public LogLevel LogLevel { get; init; } = LogLevel.Information;
         public string? IpAddress { get; init; }
         public int? Port { get; init; }
         public string? Details { get; init; }
@@ -22,7 +21,6 @@ namespace AlarmMonitoringSystem.Domain.ValueObjects
             Guid clientId,
             ConnectionStatus status,
             string? message = null,
-            LogLevel logLevel = LogLevel.Information,
             string? ipAddress = null,
             int? port = null,
             string? details = null)
@@ -36,7 +34,6 @@ namespace AlarmMonitoringSystem.Domain.ValueObjects
                 Status = status,
                 EventTime = DateTime.UtcNow,
                 Message = message?.Trim(),
-                LogLevel = logLevel,
                 IpAddress = ipAddress?.Trim(),
                 Port = port,
                 Details = details?.Trim()

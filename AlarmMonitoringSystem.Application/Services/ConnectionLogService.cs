@@ -1,10 +1,10 @@
-﻿using AlarmMonitoringSystem.Domain.Entities;
+﻿using AlarmMonitoringSystem.Application.Interfaces;
+using AlarmMonitoringSystem.Domain.Entities;
 using AlarmMonitoringSystem.Domain.Interfaces.Repositories;
 using AlarmMonitoringSystem.Domain.Interfaces.Services;
 using AlarmMonitoringSystem.Domain.ValueObjects;
 using AutoMapper;
 using Microsoft.Extensions.Logging;
-using DomainLogLevel = AlarmMonitoringSystem.Domain.Enums.LogLevel; // Fix namespace conflict
 using DomainConnectionStatus = AlarmMonitoringSystem.Domain.Enums.ConnectionStatus;
 
 namespace AlarmMonitoringSystem.Application.Services
@@ -14,12 +14,19 @@ namespace AlarmMonitoringSystem.Application.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ILogger<ConnectionLogService> _logger;
+        private readonly IRealtimeNotificationService _notificationService;
 
-        public ConnectionLogService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<ConnectionLogService> logger)
+
+        public ConnectionLogService(
+            IUnitOfWork unitOfWork,
+            IMapper mapper,
+            ILogger<ConnectionLogService> logger,
+            IRealtimeNotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         public async Task LogConnectionEventAsync(ConnectionEvent connectionEvent, CancellationToken cancellationToken = default)
@@ -32,7 +39,6 @@ namespace AlarmMonitoringSystem.Application.Services
                 ClientId = connectionEvent.ClientId,
                 Status = connectionEvent.Status,
                 Message = connectionEvent.Message,
-                LogLevel = connectionEvent.LogLevel,
                 LogTime = connectionEvent.EventTime,
                 IpAddress = connectionEvent.IpAddress,
                 Port = connectionEvent.Port,
@@ -41,15 +47,23 @@ namespace AlarmMonitoringSystem.Application.Services
 
             await _unitOfWork.ConnectionLogs.AddAsync(connectionLog, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
 
+            // Notify clients of the new log
+            try
+            {
+                await _notificationService.RefreshDashboardStatsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error notifying about new connection log");
+            }
+        }
         public async Task LogClientConnectedAsync(Guid clientId, string? ipAddress = null, int? port = null, CancellationToken cancellationToken = default)
         {
             var connectionEvent = ConnectionEvent.Create(
                 clientId,
                 DomainConnectionStatus.Connected,
                 "Client connected",
-                DomainLogLevel.Information,
                 ipAddress,
                 port);
 
@@ -64,8 +78,7 @@ namespace AlarmMonitoringSystem.Application.Services
             var connectionEvent = ConnectionEvent.Create(
                 clientId,
                 DomainConnectionStatus.Disconnected,
-                message,
-                DomainLogLevel.Information);
+                message);
 
             await LogConnectionEventAsync(connectionEvent, cancellationToken);
             _logger.LogInformation("Client {ClientId} disconnected. Reason: {Reason}", clientId, reason ?? "Unknown");
@@ -77,7 +90,6 @@ namespace AlarmMonitoringSystem.Application.Services
                 clientId,
                 DomainConnectionStatus.Error,
                 errorMessage,
-                DomainLogLevel.Error,
                 details: details);
 
             await LogConnectionEventAsync(connectionEvent, cancellationToken);
@@ -99,10 +111,7 @@ namespace AlarmMonitoringSystem.Application.Services
             return await _unitOfWork.ConnectionLogs.GetByStatusAsync(status, cancellationToken);
         }
 
-        public async Task<IEnumerable<ConnectionLog>> GetLogsByLevelAsync(DomainLogLevel logLevel, CancellationToken cancellationToken = default)
-        {
-            return await _unitOfWork.ConnectionLogs.GetByLogLevelAsync(logLevel, cancellationToken);
-        }
+
 
         public async Task<IEnumerable<ConnectionLog>> GetLogsByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
@@ -138,13 +147,5 @@ namespace AlarmMonitoringSystem.Application.Services
             return await _unitOfWork.ConnectionLogs.CountAsync(cancellationToken);
         }
 
-        public async Task<Dictionary<DomainLogLevel, int>> GetLogCountsByLevelAsync(CancellationToken cancellationToken = default)
-        {
-            // Use basic repository methods to get counts
-            var allLogs = await _unitOfWork.ConnectionLogs.GetAllAsync(cancellationToken);
-            return allLogs
-                .GroupBy(log => log.LogLevel)
-                .ToDictionary(g => g.Key, g => g.Count());
-        }
     }
 }

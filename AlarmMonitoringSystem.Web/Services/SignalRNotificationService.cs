@@ -100,11 +100,15 @@ namespace AlarmMonitoringSystem.Web.Services
             {
                 _logger.LogDebug("Broadcasting dashboard stats refresh");
 
+                // Send a dedicated refresh message to the dashboard
+                await _hubContext.Clients.Group("Dashboard").SendAsync("RefreshDashboard");
+
+                // Also send the usual RefreshStats message
                 await _hubContext.Clients.Group("Dashboard").SendAsync("RefreshStats");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error broadcasting dashboard stats refresh");
+                _logger.LogError(ex, "Error broadcasting dashboard refresh");
             }
         }
 
@@ -148,6 +152,22 @@ namespace AlarmMonitoringSystem.Web.Services
             {
                 _logger.LogError(ex, "Error getting connected users count");
                 return 0;
+            }
+        }
+
+        // Connection log notifications
+        public async Task NotifyConnectionLogAddedAsync()
+        {
+            try
+            {
+                _logger.LogDebug("Broadcasting connection log update");
+                
+                // Send refresh message to all connected clients on the dashboard
+                await _hubContext.Clients.Group("Dashboard").SendAsync("RefreshDashboard");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error broadcasting connection log update");
             }
         }
     }

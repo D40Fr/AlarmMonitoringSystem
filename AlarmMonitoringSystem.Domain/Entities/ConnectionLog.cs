@@ -18,8 +18,6 @@ namespace AlarmMonitoringSystem.Domain.Entities
         [MaxLength(500)]
         public string? Message { get; set; }
 
-        public LogLevel LogLevel { get; set; } = LogLevel.Information;
-
         public DateTime LogTime { get; set; } = DateTime.UtcNow;
 
         [MaxLength(45)]

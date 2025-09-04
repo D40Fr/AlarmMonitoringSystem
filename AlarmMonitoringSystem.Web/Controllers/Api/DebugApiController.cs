@@ -67,7 +67,6 @@ namespace AlarmMonitoringSystem.Web.Controllers.Api
                             c.Name,
                             c.Status,
                             c.LastConnectedAt,
-                            c.LastDisconnectedAt
                         }).ToList(),
                         AllClientsStatus = allClients.Select(c => new
                         {
@@ -76,7 +75,6 @@ namespace AlarmMonitoringSystem.Web.Controllers.Api
                             c.Name,
                             c.Status,
                             c.LastConnectedAt,
-                            c.LastDisconnectedAt
                         }).ToList()
                     },
                     RecentConnectionLogs = recentLogs.Select(log => new
@@ -86,7 +84,6 @@ namespace AlarmMonitoringSystem.Web.Controllers.Api
                         log.Status,
                         log.LogTime,
                         log.Message,
-                        log.LogLevel
                     }).ToList(),
                     Summary = new
                     {

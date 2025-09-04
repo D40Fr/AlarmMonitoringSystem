@@ -63,6 +63,14 @@ class AlarmMonitoringSignalR {
             this.updateConnectionStatus("Reconnecting...", "warning");
         });
 
+        // Add this new event handler
+        this.connection.on("RefreshDashboard", () => {
+            console.log("🔄 Refreshing entire dashboard");
+            if (this.currentPage === 'dashboard') {
+                this.refreshDashboardStats();
+            }
+        });
+
         this.connection.onreconnected(() => {
             this.isConnected = true;
             console.log("✅ SignalR reconnected");
@@ -149,15 +157,19 @@ class AlarmMonitoringSignalR {
     // Handle new alarm
     handleNewAlarm(alarm) {
         if (this.currentPage === 'dashboard') {
+            // Refresh stats first
             this.updateDashboardStats();
-            this.addNewAlarmToDashboard(alarm);
+
+            // Then try to add the new alarm to the table
+            setTimeout(() => {
+                this.addNewAlarmToDashboard(alarm);
+            }, 100);
         } else if (this.currentPage === 'alarms') {
             this.addNewAlarmToList(alarm);
         }
 
         this.updateAlarmCounts();
     }
-
     // Handle alarm acknowledged
     handleAlarmAcknowledged(data) {
         if (this.currentPage === 'dashboard') {
@@ -169,21 +181,19 @@ class AlarmMonitoringSignalR {
         this.updateAlarmCounts();
     }
 
-    // Handle client connected
     handleClientConnected(client) {
         if (this.currentPage === 'dashboard') {
-            this.updateConnectionCounts();
-            this.updateClientInDashboard(client, 'connected');
+            // Refresh all dashboard components instead of just updating counts
+            this.refreshDashboardStats();
         } else if (this.currentPage === 'clients') {
             this.updateClientInList(client, 'connected');
         }
     }
 
-    // Handle client disconnected
     handleClientDisconnected(data) {
         if (this.currentPage === 'dashboard') {
-            this.updateConnectionCounts();
-            this.updateClientInDashboard({ clientId: data.ClientId }, 'disconnected');
+            // Refresh all dashboard components instead of just updating counts
+            this.refreshDashboardStats();
         } else if (this.currentPage === 'clients') {
             this.updateClientInList({ clientId: data.ClientId }, 'disconnected');
         }
@@ -274,19 +284,52 @@ class AlarmMonitoringSignalR {
     }
 
     // Add new alarm to dashboard recent alarms
+    // Replace the addNewAlarmToDashboard method with this corrected version
     addNewAlarmToDashboard(alarm) {
-        const recentAlarmsTable = document.querySelector('.card-header:contains("Recent Alarms") + .card-body table tbody');
-        if (recentAlarmsTable) {
-            // Remove oldest if we have too many
-            const rows = recentAlarmsTable.querySelectorAll('tr');
-            if (rows.length >= 10) {
-                rows[rows.length - 1].remove();
+        // Fix: The jQuery-style selector doesn't work in standard JS
+        // Change from .card-header:contains("Recent Alarms") to a more reliable selector
+        const recentAlarmsSection = document.querySelector('.card-header:has(h6:contains("Recent Alarms"))');
+        const recentAlarmsTable = recentAlarmsSection ?
+            recentAlarmsSection.closest('.card').querySelector('.card-body table tbody') :
+            document.querySelector('.card-header h6.text-primary:contains("Recent Alarms")').closest('.card').querySelector('.card-body table tbody');
+
+        // Better alternative - look for Recent Alarms heading and find the table
+        if (!recentAlarmsTable) {
+            const headers = Array.from(document.querySelectorAll('.card-header h6'));
+            const recentAlarmsHeader = headers.find(h => h.textContent.includes('Recent Alarms'));
+
+            if (recentAlarmsHeader) {
+                const card = recentAlarmsHeader.closest('.card');
+                const tbody = card.querySelector('.card-body table tbody');
+
+                if (tbody) {
+                    // Remove oldest if we have too many
+                    const rows = tbody.querySelectorAll('tr');
+                    if (rows.length >= 10) {
+                        rows[rows.length - 1].remove();
+                    }
+
+                    // Add new alarm at top
+                    const newRow = this.createAlarmRow(alarm);
+                    tbody.insertAdjacentHTML('afterbegin', newRow);
+                    return;
+                }
             }
 
-            // Add new alarm at top
-            const newRow = this.createAlarmRow(alarm);
-            recentAlarmsTable.insertAdjacentHTML('afterbegin', newRow);
+            console.error("Could not find the Recent Alarms table");
+            return;
         }
+
+        // Original code continues
+        // Remove oldest if we have too many
+        const rows = recentAlarmsTable.querySelectorAll('tr');
+        if (rows.length >= 10) {
+            rows[rows.length - 1].remove();
+        }
+
+        // Add new alarm at top
+        const newRow = this.createAlarmRow(alarm);
+        recentAlarmsTable.insertAdjacentHTML('afterbegin', newRow);
     }
 
     // Add new alarm to alarms list page
@@ -409,11 +452,183 @@ class AlarmMonitoringSignalR {
         }
     }
 
-    // Refresh dashboard stats (already implemented above)
+    // Enhance the refreshDashboardStats method to also update the recent alarms and clients
     refreshDashboardStats() {
         this.updateDashboardStats();
+
+        // Also refresh the recent alarms table and client status list if we're on the dashboard
+        if (this.currentPage === 'dashboard') {
+            this.refreshRecentAlarms();
+            this.refreshClientStatuses();
+        }
     }
 
+    // Add a new method to refresh connection logs
+    async refreshConnectionLogs() {
+        try {
+            const response = await fetch('/api/connectionlogs/recent?count=10');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.data) {
+                    this.updateConnectionLogsTable(data.data);
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing connection logs:', error);
+        }
+    }
+
+    // Method to update the connection logs table
+    updateConnectionLogsTable(logs) {
+        if (!logs || logs.length === 0) return;
+
+        const headers = Array.from(document.querySelectorAll('.card-header h6'));
+        const connectionLogsHeader = headers.find(h => h.textContent.includes('Recent Connection Activity'));
+
+        if (connectionLogsHeader) {
+            const card = connectionLogsHeader.closest('.card');
+            const tbody = card.querySelector('.card-body table tbody');
+
+            if (tbody) {
+                // Clear existing rows
+                tbody.innerHTML = '';
+
+                // Add the new logs
+                logs.forEach(log => {
+                    const html = `
+                    <tr class="realtime-update">
+                        <td>${new Date(log.logTime).toLocaleTimeString()}</td>
+                        <td>${log.clientName}</td>
+                        <td>
+                            <i class="${log.statusIcon}"></i>
+                            ${log.statusDisplay}
+                        </td>
+                        <td>${log.message || ''}</td>
+                    </tr>
+                `;
+                    tbody.insertAdjacentHTML('beforeend', html);
+                });
+            }
+        }
+    }
+
+    // Update the refreshDashboardStats method to also refresh connection logs
+    refreshDashboardStats() {
+        this.updateDashboardStats();
+
+        // Also refresh the recent alarms table, client status list, and connection logs if we're on the dashboard
+        if (this.currentPage === 'dashboard') {
+            this.refreshRecentAlarms();
+            this.refreshClientStatuses();
+            this.refreshConnectionLogs(); // Add this line
+        }
+    }
+
+    // Add these new methods to refresh recent alarms and clients
+    async refreshRecentAlarms() {
+        try {
+            const response = await fetch('/Alarms/GetRecentAlarms?count=10');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.alarms) {
+                    this.updateRecentAlarmsTable(data.alarms);
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing recent alarms:', error);
+        }
+    }
+
+    async refreshClientStatuses() {
+        try {
+            const response = await fetch('/api/clients');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.data) {
+                    this.updateClientStatusList(data.data);
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing client statuses:', error);
+        }
+    }
+
+    // Method to update the recent alarms table
+    updateRecentAlarmsTable(alarms) {
+        if (!alarms || alarms.length === 0) return;
+
+        const headers = Array.from(document.querySelectorAll('.card-header h6'));
+        const recentAlarmsHeader = headers.find(h => h.textContent.includes('Recent Alarms'));
+
+        if (recentAlarmsHeader) {
+            const card = recentAlarmsHeader.closest('.card');
+            const tbody = card.querySelector('.card-body table tbody');
+
+            if (tbody) {
+                // Clear existing rows
+                tbody.innerHTML = '';
+
+                // Add the new alarms
+                alarms.forEach(alarm => {
+                    const row = this.createAlarmRow(alarm);
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+    }
+
+    // Method to update the client status list
+    // Method to update the client status list
+    updateClientStatusList(clients) {
+        if (!clients || clients.length === 0) return;
+
+        const headers = Array.from(document.querySelectorAll('.card-header h6'));
+        const clientStatusHeader = headers.find(h => h.textContent.includes('Client Status'));
+
+        if (clientStatusHeader) {
+            const card = clientStatusHeader.closest('.card');
+            const cardBody = card.querySelector('.card-body');
+
+            if (cardBody) {
+                // Clear existing client divs but keep any paragraph that might say "No clients registered"
+                const existingParagraph = cardBody.querySelector('p.text-muted');
+                cardBody.innerHTML = '';
+
+                // If we have clients, display them
+                if (clients.length > 0) {
+                    // Add the client status divs (taking only first 8)
+                    clients.slice(0, 8).forEach(client => {
+                        const statusIcon = client.status === 1 ? // Connected status has value 1
+                            '<i class="fas fa-circle text-success"></i>' :
+                            '<i class="fas fa-circle text-danger"></i>';
+
+                        const html = `
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="mr-3">
+                                ${statusIcon}
+                            </div>
+                            <div class="flex-grow-1">
+                                <a href="/Clients/Details/${client.id}" class="text-decoration-none">
+                                    <strong>${client.name}</strong>
+                                </a>
+                                <br>
+                                <small class="text-muted">${client.ipAddress || ''}:${client.port || ''}</small>
+                            </div>
+                            <div class="text-right">
+                                <small class="${client.statusCssClass || ''}">${client.statusDisplay || ''}</small>
+                            </div>
+                        </div>
+                    `;
+
+                        cardBody.insertAdjacentHTML('beforeend', html);
+                    });
+                } else if (existingParagraph) {
+                    // Put back the "No clients registered" paragraph if it existed
+                    cardBody.appendChild(existingParagraph);
+                }
+            }
+        }
+    }
     // Simple page refresh (fallback)
     refreshPage() {
         setTimeout(() => window.location.reload(), 1000);

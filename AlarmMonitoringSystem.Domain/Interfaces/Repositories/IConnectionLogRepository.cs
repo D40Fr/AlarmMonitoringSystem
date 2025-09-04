@@ -13,7 +13,6 @@ namespace AlarmMonitoringSystem.Domain.Interfaces.Repositories
     {
         Task<IEnumerable<ConnectionLog>> GetByClientIdAsync(Guid clientId, CancellationToken cancellationToken = default);
         Task<IEnumerable<ConnectionLog>> GetByStatusAsync(ConnectionStatus status, CancellationToken cancellationToken = default);
-        Task<IEnumerable<ConnectionLog>> GetByLogLevelAsync(LogLevel logLevel, CancellationToken cancellationToken = default);
         Task<IEnumerable<ConnectionLog>> GetByDateRangeAsync(
             DateTime startDate,
             DateTime endDate,

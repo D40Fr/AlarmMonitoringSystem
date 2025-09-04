@@ -32,7 +32,6 @@ namespace AlarmMonitoringSystem.Domain.Entities
 
         public DateTime? LastConnectedAt { get; set; }
 
-        public DateTime? LastDisconnectedAt { get; set; }
 
         public bool IsActive { get; set; } = true;
 

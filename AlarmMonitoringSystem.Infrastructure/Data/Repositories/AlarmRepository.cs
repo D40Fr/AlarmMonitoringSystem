@@ -108,7 +108,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Repositories
             {
                 alarm.IsAcknowledged = true;
                 alarm.AcknowledgedAt = DateTime.UtcNow;
-                alarm.AcknowledgedBy = acknowledgedBy?.Trim();
                 alarm.UpdatedAt = DateTime.UtcNow;
             }
         }
@@ -228,7 +227,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Repositories
             {
                 alarm.IsAcknowledged = true;
                 alarm.AcknowledgedAt = now;
-                alarm.AcknowledgedBy = acknowledgedBy?.Trim();
                 alarm.UpdatedAt = now;
             }
         }

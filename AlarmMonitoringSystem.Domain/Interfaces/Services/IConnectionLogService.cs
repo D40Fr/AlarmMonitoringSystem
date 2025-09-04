@@ -21,7 +21,6 @@ namespace AlarmMonitoringSystem.Domain.Interfaces.Services
         Task<IEnumerable<ConnectionLog>> GetConnectionLogsAsync(CancellationToken cancellationToken = default);
         Task<IEnumerable<ConnectionLog>> GetClientConnectionLogsAsync(Guid clientId, CancellationToken cancellationToken = default);
         Task<IEnumerable<ConnectionLog>> GetLogsByStatusAsync(ConnectionStatus status, CancellationToken cancellationToken = default);
-        Task<IEnumerable<ConnectionLog>> GetLogsByLevelAsync(LogLevel logLevel, CancellationToken cancellationToken = default);
         Task<IEnumerable<ConnectionLog>> GetLogsByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
         Task<IEnumerable<ConnectionLog>> GetRecentLogsAsync(int count, CancellationToken cancellationToken = default);
         Task<IEnumerable<ConnectionLog>> GetClientConnectionHistoryAsync(Guid clientId, int count, CancellationToken cancellationToken = default);
@@ -30,6 +29,5 @@ namespace AlarmMonitoringSystem.Domain.Interfaces.Services
         Task<ConnectionLog?> GetLastConnectionLogAsync(Guid clientId, CancellationToken cancellationToken = default);
         Task CleanupOldLogsAsync(TimeSpan maxAge, CancellationToken cancellationToken = default);
         Task<int> GetLogCountAsync(CancellationToken cancellationToken = default);
-        Task<Dictionary<LogLevel, int>> GetLogCountsByLevelAsync(CancellationToken cancellationToken = default);
     }
 }

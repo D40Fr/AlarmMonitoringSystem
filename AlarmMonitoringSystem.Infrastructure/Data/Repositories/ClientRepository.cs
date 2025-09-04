@@ -82,9 +82,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Repositories
                     case ConnectionStatus.Connected:
                         client.LastConnectedAt = now;
                         break;
-                    case ConnectionStatus.Disconnected:
-                        client.LastDisconnectedAt = now;
-                        break;
                 }
             }
         }
@@ -105,7 +102,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Repositories
             var client = await _dbSet.FindAsync(new object[] { clientId }, cancellationToken);
             if (client != null)
             {
-                client.LastDisconnectedAt = disconnectedAt;
                 client.Status = ConnectionStatus.Disconnected;
                 client.UpdatedAt = DateTime.UtcNow;
             }
@@ -135,7 +131,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Data.Repositories
                     Port = c.Port,
                     Status = c.Status,
                     LastConnectedAt = c.LastConnectedAt,
-                    LastDisconnectedAt = c.LastDisconnectedAt,
                     IsActive = c.IsActive,
                     CreatedAt = c.CreatedAt,
                     UpdatedAt = c.UpdatedAt,

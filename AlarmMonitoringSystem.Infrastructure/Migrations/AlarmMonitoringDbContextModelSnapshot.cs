@@ -26,10 +26,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("AcknowledgedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("AcknowledgedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("AlarmId")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -84,10 +80,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Zone")
-                        .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -153,9 +145,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Migrations
                     b.Property<DateTime?>("LastConnectedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("LastDisconnectedAt")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -212,11 +201,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Migrations
                         .HasMaxLength(45)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("LogLevel")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(1);
-
                     b.Property<DateTime>("LogTime")
                         .HasColumnType("TEXT");
 
@@ -237,9 +221,6 @@ namespace AlarmMonitoringSystem.Infrastructure.Migrations
 
                     b.HasIndex("ClientId")
                         .HasDatabaseName("IX_ConnectionLogs_ClientId");
-
-                    b.HasIndex("LogLevel")
-                        .HasDatabaseName("IX_ConnectionLogs_LogLevel");
 
                     b.HasIndex("LogTime")
                         .HasDatabaseName("IX_ConnectionLogs_LogTime");

@@ -16,7 +16,6 @@ namespace AlarmMonitoringSystem.Application.DTOs
         public string ClientIdentifier { get; set; } = string.Empty;
         public ConnectionStatus Status { get; set; }
         public string? Message { get; set; }
-        public LogLevel LogLevel { get; set; }
         public DateTime LogTime { get; set; }
         public string? IpAddress { get; set; }
         public int? Port { get; set; }
@@ -34,23 +33,7 @@ namespace AlarmMonitoringSystem.Application.DTOs
             _ => "Unknown"
         };
 
-        public string LogLevelDisplay => LogLevel switch
-        {
-            LogLevel.Information => "Info",
-            LogLevel.Warning => "Warning",
-            LogLevel.Error => "Error",
-            LogLevel.Critical => "Critical",
-            _ => "Unknown"
-        };
 
-        public string LogLevelBadgeClass => LogLevel switch
-        {
-            LogLevel.Information => "badge-info",
-            LogLevel.Warning => "badge-warning",
-            LogLevel.Error => "badge-danger",
-            LogLevel.Critical => "badge-dark",
-            _ => "badge-secondary"
-        };
 
         public string StatusIcon => Status switch
         {
