@@ -1,4 +1,4 @@
-﻿// AlarmMonitoringSystem.Infrastructure/TcpServer/TcpServerService.cs
+// AlarmMonitoringSystem.Infrastructure/TcpServer/TcpServerService.cs
 using AlarmMonitoringSystem.Application.Services;
 using AlarmMonitoringSystem.Domain.Entities;
 using AlarmMonitoringSystem.Domain.Interfaces.Services;
@@ -14,7 +14,7 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
 {
     public class TcpServerService : ITcpServerService, IDisposable
     {
-        private readonly IServiceScopeFactory _serviceScopeFactory; // ✅ Use scope factory instead
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<TcpServerService> _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly TcpServerConfiguration _configuration;
@@ -31,7 +31,7 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
         private long _totalMessagesProcessed = 0;
 
         public TcpServerService(
-            IServiceScopeFactory serviceScopeFactory, // ✅ Inject scope factory
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<TcpServerService> logger,
             ILoggerFactory loggerFactory,
             TcpServerConfiguration configuration)
@@ -157,13 +157,11 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
             }
         }
 
-        // Fix in TcpServerService.cs - HandleNewClientAsync method
-        // Replace the connection logging section with this:
-
         private async Task HandleNewClientAsync(TcpClient tcpClient, CancellationToken cancellationToken)
         {
             string? clientId = null;
             TcpClientHandler? clientHandler = null;
+            Client? registeredClient = null;
 
             try
             {
@@ -174,7 +172,7 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
 
                 _logger.LogInformation("New TCP connection from {IpAddress}:{Port}", ipAddress, port);
 
-                // Generate or determine client ID
+                // Generate client ID
                 clientId = $"CLIENT_{ipAddress}_{port}_{DateTime.UtcNow.Ticks}";
 
                 // Create client info
@@ -190,19 +188,21 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
                     Status = Domain.Enums.ConnectionStatus.Connected
                 };
 
-                // Create logger for TcpClientHandler
-                var clientHandlerLogger = _loggerFactory.CreateLogger<TcpClientHandler>();
-
-                // ✅ Create scoped services for this client
+                // Create scope for this client's lifetime
                 using var scope = _serviceScopeFactory.CreateScope();
                 var messageProcessor = scope.ServiceProvider.GetRequiredService<ITcpMessageProcessorService>();
                 var connectionLogService = scope.ServiceProvider.GetRequiredService<IConnectionLogService>();
+                var clientHandlerLogger = _loggerFactory.CreateLogger<TcpClientHandler>();
 
-                // Create client handler
+                // Register client in business layer first
+                registeredClient = await RegisterClientInBusinessLayer(clientInfo, scope.ServiceProvider, cancellationToken);
+
+                // Create client handler with scope factory for disconnection handling
                 clientHandler = new TcpClientHandler(
                     clientInfo,
                     messageProcessor,
                     connectionLogService,
+                    _serviceScopeFactory,
                     clientHandlerLogger,
                     _configuration);
 
@@ -214,14 +214,11 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
                 // Add to connected clients
                 _connectedClients.TryAdd(clientId, clientHandler);
 
-                // Register client in business layer
-                var registeredClient = await RegisterClientInBusinessLayer(clientInfo, scope.ServiceProvider, cancellationToken);
-
-                // ✅ FIXED: Log connection using the database client ID (GUID), not string
+                // Log connection using the database client ID
                 if (registeredClient != null)
                 {
                     await connectionLogService.LogClientConnectedAsync(
-                        registeredClient.Id, // Use the GUID from the registered client
+                        registeredClient.Id,
                         ipAddress,
                         port,
                         cancellationToken);
@@ -247,7 +244,6 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
             }
         }
 
-        // ✅ FIXED: Update RegisterClientInBusinessLayer to return the client
         private async Task<Client?> RegisterClientInBusinessLayer(
             TcpClientInfo clientInfo,
             IServiceProvider serviceProvider,
@@ -255,7 +251,6 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
         {
             try
             {
-                // ✅ Get scoped client service from the provided scope
                 var clientService = serviceProvider.GetRequiredService<IClientService>();
 
                 // Check if client already exists
@@ -273,24 +268,23 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
 
                     var newClient = await clientService.RegisterClientAsync(clientInfoVO, cancellationToken);
                     _logger.LogInformation("Auto-registered new client {ClientId}", clientInfo.ClientId);
-                    return newClient; // ✅ Return the registered client
+                    return newClient;
                 }
                 else
                 {
                     // Update existing client status
                     await clientService.UpdateClientStatusAsync(clientInfo.ClientId, Domain.Enums.ConnectionStatus.Connected, cancellationToken);
                     _logger.LogInformation("Updated existing client {ClientId} status to Connected", clientInfo.ClientId);
-                    return existingClient; // ✅ Return the existing client
+                    return existingClient;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error registering client {ClientId} in business layer", clientInfo.ClientId);
-                return null; // Return null on error
+                return null;
             }
         }
 
-        // Rest of the methods remain the same...
         public async Task<bool> DisconnectClientAsync(string clientId, CancellationToken cancellationToken = default)
         {
             if (_connectedClients.TryGetValue(clientId, out var clientHandler))
@@ -366,13 +360,43 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
             return await Task.FromResult(_connectedClients.Keys.ToList());
         }
 
+        // Return actual connected count from in-memory collection
         public async Task<int> GetConnectedClientCountAsync(CancellationToken cancellationToken = default)
         {
+            // Remove dead connections from the collection
+            await CleanupDeadConnections();
             return await Task.FromResult(_connectedClients.Count);
+        }
+
+        // Method to clean up dead connections
+        private async Task CleanupDeadConnections()
+        {
+            var deadClients = new List<string>();
+
+            foreach (var kvp in _connectedClients)
+            {
+                var clientHandler = kvp.Value;
+                if (!clientHandler.IsClientAlive() || !clientHandler.ClientInfo.IsConnected)
+                {
+                    deadClients.Add(kvp.Key);
+                }
+            }
+
+            foreach (var deadClientId in deadClients)
+            {
+                if (_connectedClients.TryRemove(deadClientId, out var deadClientHandler))
+                {
+                    _logger.LogInformation("Removing dead client {ClientId} from connected list", deadClientId);
+                    await deadClientHandler.DisconnectAsync("Connection lost/dead");
+                }
+            }
         }
 
         public async Task<Dictionary<string, object>> GetServerStatusAsync(CancellationToken cancellationToken = default)
         {
+            // Clean up dead connections before reporting status
+            await CleanupDeadConnections();
+
             return await Task.FromResult(new Dictionary<string, object>
             {
                 { "IsRunning", IsRunning },
@@ -417,6 +441,8 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
                 using var scope = _serviceScopeFactory.CreateScope();
                 var clientService = scope.ServiceProvider.GetRequiredService<IClientService>();
                 await clientService.UpdateClientStatusAsync(clientId, Domain.Enums.ConnectionStatus.Disconnected);
+                
+                _logger.LogInformation("Updated client {ClientId} status to Disconnected in database", clientId);
             }
             catch (Exception ex)
             {
