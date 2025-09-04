@@ -1,8 +1,9 @@
-﻿// AlarmMonitoringSystem.Infrastructure/TcpServer/TcpClientHandler.cs
+// AlarmMonitoringSystem.Infrastructure/TcpServer/TcpClientHandler.cs
 using AlarmMonitoringSystem.Application.Services;
 using AlarmMonitoringSystem.Domain.Enums;
 using AlarmMonitoringSystem.Domain.Interfaces.Services;
 using AlarmMonitoringSystem.Infrastructure.TcpServer.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Net.Sockets;
 using System.Text;
@@ -14,8 +15,10 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
         private readonly TcpClientInfo _clientInfo;
         private readonly ITcpMessageProcessorService _messageProcessor;
         private readonly IConnectionLogService _connectionLogService;
+        private readonly IServiceScopeFactory _serviceScopeFactory; // ✅ ADD: For creating scopes
         private readonly ILogger<TcpClientHandler> _logger;
         private readonly TcpServerConfiguration _configuration;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         // Events
         public event Func<string, Task>? ClientDisconnected;
@@ -29,14 +32,17 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
             TcpClientInfo clientInfo,
             ITcpMessageProcessorService messageProcessor,
             IConnectionLogService connectionLogService,
+            IServiceScopeFactory serviceScopeFactory, // ✅ ADD: Inject scope factory
             ILogger<TcpClientHandler> logger,
             TcpServerConfiguration configuration)
         {
             _clientInfo = clientInfo;
             _messageProcessor = messageProcessor;
             _connectionLogService = connectionLogService;
+            _serviceScopeFactory = serviceScopeFactory; // ✅ ADD: Store scope factory
             _logger = logger;
             _configuration = configuration;
+            _cancellationTokenSource = new CancellationTokenSource();
         }
 
         public async Task StartHandlingAsync()
@@ -47,7 +53,7 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
             try
             {
                 // Start listening for messages
-                await ListenForMessagesAsync(_clientInfo.CancellationTokenSource.Token);
+                await ListenForMessagesAsync(_cancellationTokenSource.Token);
             }
             catch (OperationCanceledException)
             {
@@ -73,10 +79,43 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
             {
                 try
                 {
-                    // Check if data is available
-                    if (!_clientInfo.Stream.DataAvailable)
+                    // ✅ FIX: Better connection checking
+                    if (!IsClientStillConnected())
                     {
-                        await Task.Delay(10, cancellationToken); // Small delay to prevent busy waiting
+                        _logger.LogInformation("Client {ClientId} connection lost", _clientInfo.ClientId);
+                        break;
+                    }
+
+                    // Check if data is available with timeout
+                    bool dataAvailable = false;
+                    var timeoutTask = Task.Delay(1000, cancellationToken); // 1 second timeout
+                    var checkDataTask = Task.Run(() =>
+                    {
+                        try
+                        {
+                            return _clientInfo.Stream.DataAvailable;
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    }, cancellationToken);
+
+                    var completedTask = await Task.WhenAny(checkDataTask, timeoutTask);
+                    if (completedTask == checkDataTask)
+                    {
+                        dataAvailable = await checkDataTask;
+                    }
+
+                    if (!dataAvailable)
+                    {
+                        // ✅ FIX: Check for client timeout
+                        if (_clientInfo.TimeSinceLastActivity.TotalSeconds > _configuration.ConnectionTimeoutSeconds)
+                        {
+                            _logger.LogWarning("Client {ClientId} timed out (no activity for {Seconds} seconds)",
+                                _clientInfo.ClientId, _clientInfo.TimeSinceLastActivity.TotalSeconds);
+                            break;
+                        }
                         continue;
                     }
 
@@ -85,8 +124,8 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
 
                     if (bytesRead == 0)
                     {
-                        // Client disconnected
-                        _logger.LogInformation("Client {ClientId} disconnected (no data received)", _clientInfo.ClientId);
+                        // Client disconnected gracefully
+                        _logger.LogInformation("Client {ClientId} disconnected gracefully (no data received)", _clientInfo.ClientId);
                         break;
                     }
 
@@ -110,12 +149,44 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
                     _logger.LogInformation("Stream disposed for client {ClientId}", _clientInfo.ClientId);
                     break;
                 }
+                catch (SocketException ex)
+                {
+                    _logger.LogWarning("Socket error for client {ClientId}: {Error}", _clientInfo.ClientId, ex.Message);
+                    break;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Unexpected error reading from client {ClientId}", _clientInfo.ClientId);
                     await NotifyErrorAsync(ex);
                     break;
                 }
+            }
+        }
+
+        // ✅ ADD: Better connection checking method
+        private bool IsClientStillConnected()
+        {
+            try
+            {
+                if (_clientInfo.TcpClient?.Client == null)
+                    return false;
+
+                // Use Socket.Poll to check if the connection is still alive
+                var socket = _clientInfo.TcpClient.Client;
+                bool part1 = socket.Poll(1000, SelectMode.SelectRead);
+                bool part2 = (socket.Available == 0);
+                
+                if (part1 && part2)
+                {
+                    // Connection has been closed
+                    return false;
+                }
+                
+                return socket.Connected;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -244,8 +315,6 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
         private async Task ProcessHeartbeatMessage(TcpMessage message, CancellationToken cancellationToken)
         {
             _logger.LogDebug("Received heartbeat from client {ClientId}", _clientInfo.ClientId);
-
-            // Simple heartbeat response
             await SendResponseAsync("HEARTBEAT_OK");
         }
 
@@ -253,7 +322,7 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
         {
             try
             {
-                if (!_clientInfo.IsConnected)
+                if (!_clientInfo.IsConnected || !IsClientStillConnected())
                     return;
 
                 byte[] responseBytes = Encoding.UTF8.GetBytes(response + "\n");
@@ -279,10 +348,30 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
             {
                 _clientInfo.Status = ConnectionStatus.Disconnected;
 
-                // Log disconnection
-                await _connectionLogService.LogClientDisconnectedAsync(
-                    Guid.Parse(_clientInfo.ClientId), // Assuming ClientId can be parsed as Guid
-                    reason);
+                // ✅ FIX: Create scope to get services for disconnection logging
+                using var scope = _serviceScopeFactory.CreateScope();
+                var connectionLogService = scope.ServiceProvider.GetRequiredService<IConnectionLogService>();
+                var clientService = scope.ServiceProvider.GetRequiredService<IClientService>();
+
+                // Parse client ID as GUID for database operations
+                if (Guid.TryParse(_clientInfo.ClientId, out var clientGuid))
+                {
+                    // Log disconnection
+                    await connectionLogService.LogClientDisconnectedAsync(clientGuid, reason);
+                    
+                    // Update client status in database
+                    await clientService.UpdateClientStatusAsync(clientGuid, ConnectionStatus.Disconnected);
+                }
+                else
+                {
+                    // Handle string-based client IDs
+                    var client = await clientService.GetClientByClientIdAsync(_clientInfo.ClientId);
+                    if (client != null)
+                    {
+                        await connectionLogService.LogClientDisconnectedAsync(client.Id, reason);
+                        await clientService.UpdateClientStatusAsync(client.Id, ConnectionStatus.Disconnected);
+                    }
+                }
 
                 // Notify disconnection
                 await NotifyClientDisconnected();
@@ -293,6 +382,8 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
             }
             finally
             {
+                // Cancel any ongoing operations
+                _cancellationTokenSource.Cancel();
                 _clientInfo.Dispose();
             }
         }
@@ -301,7 +392,7 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
         {
             try
             {
-                if (!_clientInfo.IsConnected)
+                if (!_clientInfo.IsConnected || !IsClientStillConnected())
                 {
                     _logger.LogWarning("Cannot send message to disconnected client {ClientId}", _clientInfo.ClientId);
                     return;
@@ -381,11 +472,16 @@ namespace AlarmMonitoringSystem.Infrastructure.TcpServer
         {
             try
             {
+                _cancellationTokenSource?.Cancel();
                 _clientInfo?.Dispose();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error disposing TcpClientHandler for {ClientId}", _clientInfo?.ClientId ?? "Unknown");
+            }
+            finally
+            {
+                _cancellationTokenSource?.Dispose();
             }
         }
     }
